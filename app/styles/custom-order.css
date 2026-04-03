@@ -1,0 +1,400 @@
+/* ================= LUXURY CUSTOM ORDER PAGE ================= */
+
+.custom-order-page {
+  background: linear-gradient(180deg, var(--bg-main) 0%, var(--bg-soft) 100%);
+  min-height: 100vh;
+  color: var(--text-dark);
+}
+
+.custom-order-hero {
+  padding: 6rem 0 4rem;
+  text-align: center;
+  background:
+    radial-gradient(circle at top right, rgba(184, 149, 106, 0.08), transparent 40%),
+    linear-gradient(180deg, rgba(245, 241, 237, 0.3) 0%, var(--bg-main) 100%);
+  border-bottom: 1px solid var(--line);
+}
+
+.custom-order-label {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1.4rem;
+  border-radius: var(--radius-full);
+  background: rgba(184, 149, 106, 0.08);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 1px solid var(--accent-light);
+}
+
+.custom-order-hero h1 {
+  font-size: clamp(2.4rem, 5.5vw, 3.5rem);
+  line-height: 1.08;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.custom-order-subtext {
+  max-width: 850px;
+  margin: 0 auto;
+  font-size: 1.1rem;
+  line-height: 1.85;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.custom-order-section {
+  padding: 5.5rem 0;
+}
+
+.custom-order-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 4rem;
+  align-items: start;
+}
+
+.custom-order-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2.2rem;
+}
+
+.custom-order-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-smooth);
+}
+
+.custom-order-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-light);
+  transform: translateY(-2px);
+}
+
+.intro-card h2,
+.custom-order-form-card h2 {
+  font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: -0.3px;
+}
+
+.intro-card p {
+  color: var(--text-muted);
+  line-height: 1.85;
+  margin-bottom: 2rem;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.custom-highlight-list {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.custom-highlight-item {
+  padding: 1.4rem 1.6rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(245, 241, 237, 0.4) 0%, rgba(250, 250, 248, 0.6) 100%);
+  border: 1px solid var(--line);
+  color: var(--text-body);
+  font-size: 0.98rem;
+  font-weight: 500;
+  transition: all var(--transition-smooth);
+  letter-spacing: 0.2px;
+}
+
+.custom-highlight-item:hover {
+  background: linear-gradient(135deg, rgba(184, 149, 106, 0.08) 0%, rgba(245, 241, 237, 0.5) 100%);
+  border-color: var(--accent-light);
+  transform: translateX(6px);
+  box-shadow: var(--shadow-sm);
+}
+
+.process-card-alt h3 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin-bottom: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.timeline-step {
+  display: flex;
+  gap: 1.6rem;
+  align-items: flex-start;
+  position: relative;
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+}
+
+.timeline-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 50px;
+  width: 1.5px;
+  height: calc(100% - 8px);
+  background: rgba(184, 149, 106, 0.15);
+}
+
+.timeline-step span {
+  min-width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--shadow-md);
+  flex-shrink: 0;
+}
+
+.timeline-step h4 {
+  font-size: 1.1rem;
+  margin-bottom: 0.6rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: -0.2px;
+}
+
+.timeline-step p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  margin: 0;
+  font-weight: 500;
+}
+
+.custom-order-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+
+.custom-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+}
+
+.custom-order-form input,
+.custom-order-form select,
+.custom-order-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, var(--bg-lighter) 0%, var(--white) 100%);
+  border-radius: var(--radius-md);
+  padding: 1.2rem 1.5rem;
+  font-size: 1rem;
+  color: var(--text-dark);
+  outline: none;
+  transition: all var(--transition-smooth);
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.custom-order-form input::placeholder,
+.custom-order-form select::placeholder,
+.custom-order-form textarea::placeholder {
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.custom-order-form input:focus,
+.custom-order-form select:focus,
+.custom-order-form textarea:focus {
+  border-color: var(--accent);
+  background: var(--white);
+  box-shadow: 0 0 0 4px rgba(184, 149, 106, 0.08);
+}
+
+.custom-order-form textarea {
+  resize: vertical;
+  min-height: 160px;
+}
+
+.custom-upload-box {
+  padding: 2rem 1.5rem;
+  border: 2px dashed var(--accent-light);
+  border-radius: var(--radius-lg);
+  background: rgba(184, 149, 106, 0.04);
+  transition: all var(--transition-smooth);
+  text-align: center;
+}
+
+.custom-upload-box:hover {
+  background: rgba(184, 149, 106, 0.08);
+  border-color: var(--accent);
+}
+
+.upload-label {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.custom-upload-box input[type="file"] {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.upload-file-name {
+  margin-top: 1rem;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.custom-order-form button {
+  border: none;
+  background: var(--text-dark);
+  color: white;
+  padding: 1.3rem 2.8rem;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  box-shadow: var(--shadow-sm);
+  align-self: flex-start;
+  margin-top: 0.5rem;
+}
+
+.custom-order-form button:hover {
+  background: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.custom-order-form button:active {
+  transform: translateY(0);
+}
+
+.form-msg {
+  margin-top: 1rem;
+  font-size: 14px;
+  line-height: 1.7;
+  padding: 1.2rem 1.6rem;
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+}
+
+.form-msg.success {
+  background: rgba(76, 175, 80, 0.08);
+  color: #2e7d32;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.form-msg.error {
+  background: rgba(211, 47, 47, 0.08);
+  color: #b71c1c;
+  border: 1px solid rgba(211, 47, 47, 0.3);
+}
+
+@media (max-width: 1024px) {
+  .custom-order-section {
+    padding: 4.5rem 0;
+  }
+
+  .custom-order-hero h1 {
+    font-size: clamp(2.2rem, 4.5vw, 3rem);
+  }
+
+  .custom-order-grid {
+    gap: 3.5rem;
+  }
+}
+
+@media (max-width: 992px) {
+  .custom-order-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .custom-order-hero h1 {
+    font-size: clamp(2rem, 4vw, 2.6rem);
+  }
+
+  .custom-order-section {
+    padding: 3.5rem 0;
+  }
+
+  .custom-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .custom-order-hero {
+    padding: 4.5rem 0 3rem;
+  }
+
+  .custom-order-hero h1 {
+    font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+  }
+
+  .timeline-step {
+    gap: 1.2rem;
+  }
+
+  .custom-order-card {
+    padding: 2rem;
+  }
+
+  .custom-order-form input,
+  .custom-order-form select,
+  .custom-order-form textarea {
+    padding: 1rem 1.2rem;
+    font-size: 0.95rem;
+  }
+
+  .custom-upload-box {
+    padding: 1.5rem;
+  }
+
+  .custom-order-form button {
+    padding: 1.1rem 2.4rem;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 576px) {
+  .custom-order-hero {
+    padding: 3.5rem 0 2.5rem;
+  }
+
+  .custom-order-hero h1 {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+  }
+
+  .custom-order-section {
+    padding: 2.5rem 0;
+  }
+
+  .custom-order-card {
+    padding: 1.5rem;
+  }
+
+  .custom-order-form button {
+    padding: 1rem 2rem;
+    font-size: 10px;
+    width: 100%;
+  }
+}

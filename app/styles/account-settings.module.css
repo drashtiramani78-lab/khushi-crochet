@@ -1,0 +1,370 @@
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 4rem 2rem 3rem;
+  min-height: 100vh;
+  background: var(--bg-main);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 4rem;
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.header h1 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  margin: 0;
+  color: var(--text-dark);
+  font-weight: 700;
+  letter-spacing: -0.8px;
+}
+
+.header p {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin: 0.75rem 0 0;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.content {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-soft);
+}
+
+.tabBtn {
+  flex: 1;
+  padding: 1.5rem 1.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-base);
+  letter-spacing: 1.5px;
+}
+
+.tabBtn:hover {
+  background: rgba(196, 168, 120, 0.05);
+  color: var(--text-dark);
+}
+
+.tabBtn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--white);
+}
+
+.success {
+  background: rgba(76, 175, 80, 0.08);
+  color: #2e7d32;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-lg);
+  margin: 1.5rem 1.5rem 0;
+  border-left: 4px solid #4caf50;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.error {
+  background: rgba(244, 67, 54, 0.08);
+  color: #c62828;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-lg);
+  margin: 1.5rem 1.5rem 0;
+  border-left: 4px solid #f44336;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.form {
+  padding: 2.8rem;
+}
+
+.formGroup {
+  margin-bottom: 2rem;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 0.8rem;
+  color: var(--text-dark);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.formGroup small {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.input {
+  width: 100%;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  transition: all var(--transition-base);
+  background-color: var(--white);
+  font-family: inherit;
+  color: var(--text-dark);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(196, 168, 120, 0.1);
+  background-color: var(--white);
+}
+
+.input:disabled {
+  background: var(--bg-soft);
+  cursor: not-allowed;
+  color: var(--text-muted);
+  border-color: var(--line);
+}
+
+.submitBtn {
+  background: var(--text-dark);
+  color: var(--white);
+  padding: 1rem 2.8rem;
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-sm);
+}
+
+.submitBtn:hover {
+  background: var(--accent-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.submitBtn:active {
+  transform: translateY(0);
+}
+
+.preferences {
+  padding: 2.8rem;
+}
+
+.preferenceItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.8rem 1.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  background: var(--bg-lighter);
+  transition: all var(--transition-base);
+}
+
+.preferenceItem:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.preferenceItem h3 {
+  margin: 0;
+  color: var(--text-dark);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.preferenceItem p {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+.checkbox {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  accent-color: var(--accent);
+  transition: all var(--transition-base);
+}
+
+.checkbox:hover {
+  transform: scale(1.1);
+}
+
+.loading {
+  text-align: center;
+  padding: 5rem 2rem;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 2rem 1.5rem;
+  }
+
+  .header {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+  }
+
+  .header h1 {
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+  }
+
+  .header p {
+    font-size: 0.95rem;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+  }
+
+  .tabBtn {
+    flex: 1 1 50%;
+    font-size: 0.85rem;
+    padding: 1.2rem 0.75rem;
+    letter-spacing: 1px;
+  }
+
+  .form,
+  .preferences {
+    padding: 2rem 1.5rem;
+  }
+
+  .formGroup {
+    margin-bottom: 1.5rem;
+  }
+
+  .formGroup label {
+    font-size: 0.9rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .input {
+    padding: 0.9rem 1rem;
+    font-size: 16px;
+  }
+
+  .submitBtn {
+    padding: 0.9rem 2rem;
+    font-size: 0.9rem;
+    width: 100%;
+  }
+
+  .preferenceItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+    padding: 1.5rem;
+  }
+
+  .checkbox {
+    align-self: flex-start;
+  }
+
+  .success,
+  .error {
+    margin: 1.5rem 1rem 0;
+    padding: 1rem 1.25rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 1.5rem 1rem;
+  }
+
+  .header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .header h1 {
+    font-size: clamp(1.3rem, 3vw, 1.8rem);
+  }
+
+  .header p {
+    font-size: 0.9rem;
+  }
+
+  .tabs {
+    flex-direction: column;
+  }
+
+  .tabBtn {
+    padding: 1rem;
+    font-size: 0.8rem;
+    flex: 1 1 auto;
+    letter-spacing: 1px;
+  }
+
+  .form,
+  .preferences {
+    padding: 1.5rem 1rem;
+  }
+
+  .formGroup {
+    margin-bottom: 1.25rem;
+  }
+
+  .formGroup label {
+    font-size: 0.85rem;
+  }
+
+  .input {
+    padding: 0.8rem 0.9rem;
+  }
+
+  .submitBtn {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.85rem;
+    width: 100%;
+  }
+
+  .preferenceItem {
+    padding: 1.25rem 1rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .preferenceItem h3 {
+    font-size: 0.95rem;
+  }
+
+  .success,
+  .error {
+    margin: 1rem;
+    padding: 0.9rem 1rem;
+    font-size: 0.85rem;
+  }
+}

@@ -1,0 +1,312 @@
+/* ================= ULTRA LUXURY NAVBAR ================= */
+
+.luxury-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  background: rgba(248, 244, 238, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(139, 111, 71, 0.14);
+  box-shadow: 0 10px 30px rgba(17, 17, 17, 0.05);
+  transition: all var(--transition-smooth);
+}
+
+.luxury-header::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(139, 111, 71, 0),
+    rgba(139, 111, 71, 0.35),
+    rgba(139, 111, 71, 0)
+  );
+}
+
+.luxury-navbar {
+  min-height: 108px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  position: relative;
+}
+
+.luxury-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  flex-shrink: 0;
+  text-decoration: none;
+  transition: transform var(--transition-smooth), opacity var(--transition-base);
+}
+
+.luxury-logo:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.logo-img {
+  display: block;
+  height: 88px;
+  width: auto;
+  object-fit: contain;
+  transition: transform var(--transition-smooth), filter var(--transition-smooth);
+}
+
+.luxury-logo:hover .logo-img {
+  transform: scale(1.01);
+  filter: saturate(0.96) contrast(1.02);
+}
+
+.luxury-menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+  margin-left: auto;
+}
+
+.luxury-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dark);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 0.4rem 0;
+  transition: color var(--transition-base), opacity var(--transition-base);
+}
+
+.luxury-link::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(139, 111, 71, 0),
+    rgba(139, 111, 71, 1),
+    rgba(139, 111, 71, 0)
+  );
+  transform: translateX(-50%);
+  transition: width var(--transition-smooth);
+}
+
+.luxury-link:hover {
+  color: var(--accent);
+}
+
+.luxury-link:hover::before {
+  width: 100%;
+}
+
+.cart-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -9px;
+  right: -13px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--white);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(139, 111, 71, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+.luxury-toggle {
+  display: none;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-base);
+}
+
+.luxury-toggle:hover {
+  border-color: rgba(139, 111, 71, 0.18);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.luxury-toggle span {
+  display: block;
+  width: 22px;
+  height: 1.5px;
+  margin: 5px auto;
+  background: var(--text-dark);
+  transition: all var(--transition-smooth);
+}
+
+.luxury-toggle:hover span {
+  background: var(--accent);
+}
+
+.luxury-toggle.active span:nth-child(1) {
+  transform: translateY(6.5px) rotate(45deg);
+}
+
+.luxury-toggle.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.luxury-toggle.active span:nth-child(3) {
+  transform: translateY(-6.5px) rotate(-45deg);
+}
+
+/* Optional active nav link */
+.luxury-link.active {
+  color: var(--accent);
+}
+
+.luxury-link.active::before {
+  width: 100%;
+}
+
+/* DESKTOP POLISH */
+@media (min-width: 992px) {
+  .luxury-menu {
+    padding-top: 2px;
+  }
+}
+
+/* TABLET */
+@media (max-width: 991px) {
+  .luxury-navbar {
+    min-height: 96px;
+    padding: 0.9rem 1.5rem;
+    gap: 1rem;
+  }
+
+  .logo-img {
+    height: 72px;
+  }
+
+  .luxury-toggle {
+    display: block;
+  }
+
+  .luxury-menu {
+    position: absolute;
+    top: calc(100% + 14px);
+    left: 1.5rem;
+    right: 1.5rem;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.4rem;
+    margin-left: 0;
+    padding: 2rem 1.5rem;
+    background: rgba(249, 245, 239, 0.98);
+    border: 1px solid rgba(139, 111, 71, 0.14);
+    border-radius: 24px;
+    box-shadow: 0 18px 45px rgba(17, 17, 17, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .luxury-menu::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 14%;
+    right: 14%;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      rgba(139, 111, 71, 0),
+      rgba(139, 111, 71, 0.28),
+      rgba(139, 111, 71, 0)
+    );
+  }
+
+  .luxury-menu.show {
+    display: flex;
+  }
+
+  .luxury-link {
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 0.35rem 0;
+  }
+
+  .luxury-link::before {
+    bottom: -4px;
+  }
+
+  .luxury-link:hover::before,
+  .luxury-link.active::before {
+    width: 58px;
+  }
+}
+
+/* MOBILE */
+@media (max-width: 576px) {
+  .luxury-header {
+    background: rgba(248, 244, 238, 0.97);
+  }
+
+  .luxury-navbar {
+    min-height: 82px;
+    padding: 0.65rem 1rem;
+  }
+
+  .logo-img {
+    height: 62px;
+  }
+
+  .luxury-menu {
+    left: 1rem;
+    right: 1rem;
+    top: calc(100% + 12px);
+    padding: 1.5rem 1rem;
+    gap: 1.2rem;
+    border-radius: 20px;
+  }
+
+  .luxury-link {
+    font-size: 10.5px;
+    letter-spacing: 1.8px;
+  }
+
+  .cart-badge {
+    top: -7px;
+    right: -10px;
+    min-width: 17px;
+    height: 17px;
+    font-size: 8px;
+  }
+}

@@ -1,0 +1,143 @@
+/* ================= PREMIUM ABOUT SECTION ================= */
+
+.about-section {
+  padding: 6rem 0;
+  background: var(--bg-main);
+}
+
+.about-image-wrap {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-smooth);
+  overflow: hidden;
+}
+
+.about-image-wrap:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.about-image {
+  width: 100%;
+  height: 580px;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  display: block;
+  transition: all var(--transition-smooth);
+}
+
+.about-image-wrap:hover .about-image {
+  transform: scale(1.02);
+}
+
+.about-content {
+  max-width: 650px;
+}
+
+.about-text {
+  font-size: 1.08rem;
+  line-height: 1.85;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  font-weight: 500;
+}
+
+.about-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.8rem;
+  padding: 1.2rem 2.6rem;
+  border-radius: var(--radius-full);
+  background: var(--text-dark);
+  border: none;
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all var(--transition-smooth);
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.about-btn:hover {
+  background: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 1024px) {
+  .about-section {
+    padding: 5rem 0;
+  }
+
+  .about-image {
+    height: 520px;
+  }
+}
+
+@media (max-width: 991px) {
+  .about-section {
+    padding: 4.5rem 0;
+    text-align: center;
+  }
+
+  .about-content {
+    max-width: 100%;
+  }
+
+  .about-image {
+    height: 480px;
+  }
+
+  .about-image-wrap {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .about-section {
+    padding: 3.5rem 0;
+  }
+
+  .about-image {
+    height: 420px;
+  }
+
+  .about-text {
+    font-size: 1.05rem;
+    margin-bottom: 1.8rem;
+  }
+
+  .about-image-wrap {
+    padding: 1.2rem;
+  }
+
+  .about-btn {
+    padding: 1rem 2.2rem;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  .about-section {
+    padding: 2rem 0;
+  }
+
+  .about-image {
+    height: 300px;
+  }
+
+  .about-text {
+    font-size: 0.95rem;
+  }
+
+  .about-btn {
+    padding: 0.85rem 1.8rem;
+    font-size: 11px;
+  }
+}
