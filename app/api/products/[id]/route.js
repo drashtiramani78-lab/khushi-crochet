@@ -3,6 +3,23 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import Product from "@/models/product";
 
+function normalizeIdentifier(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function findProductByIdOrSlug(identifier) {
+  const normalized = normalizeIdentifier(identifier);
+
+  if (!normalized) return null;
+
+  if (mongoose.Types.ObjectId.isValid(normalized)) {
+    const byId = await Product.findById(normalized);
+    if (byId) return byId;
+  }
+
+  return Product.findOne({ slug: normalized });
+}
+
 export async function GET(req, { params }) {
   try {
     await connectDB();
@@ -11,19 +28,12 @@ export async function GET(req, { params }) {
 
     if (!id) {
       return NextResponse.json(
-        { message: "Product id is required" },
+        { message: "Product id or slug is required" },
         { status: 400 }
       );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { message: "Invalid product id" },
-        { status: 400 }
-      );
-    }
-
-    const product = await Product.findById(id);
+    const product = await findProductByIdOrSlug(id);
 
     if (!product) {
       return NextResponse.json(
@@ -48,6 +58,17 @@ export async function PUT(req, { params }) {
 
     const { id } = await params;
     const body = await req.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { message: "Product id is required" },
+        { status: 400 }
+      );
+    }
+
+    if (body.slug) {
+      body.slug = String(body.slug).trim().toLowerCase();
+    }
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
@@ -83,6 +104,13 @@ export async function DELETE(req, { params }) {
     await connectDB();
 
     const { id } = await params;
+
+    if (!id) {
+      return NextResponse.json(
+        { message: "Product id is required" },
+        { status: 400 }
+      );
+    }
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(

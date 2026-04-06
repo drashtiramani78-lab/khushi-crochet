@@ -1,31 +1,72 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
 import { useAuth } from "@/app/context/AuthContext";
+
+const navLinks = [
+  { label: "Home", href: "/" },
+  { label: "Shop", href: "/products" },
+  { label: "About", href: "/about" },
+  { label: "Custom Orders", href: "/custom-order" },
+  { label: "Contact", href: "/contact" },
+  { label: "Track Order", href: "/order-track" },
+];
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
+
+  const pathname = usePathname();
+  const dropdownRef = useRef(null);
+
   const { getCartCount } = useCart();
   const { user, logout, authLoading } = useAuth();
+
   const cartCount = getCartCount();
 
-  const handleLogout = async () => {
-    await logout();
-    setProfileDropdown(false);
+  useEffect(() => {
     setMenuOpen(false);
+    setProfileDropdown(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setProfileDropdown(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      setProfileDropdown(false);
+      setMenuOpen(false);
+    }
+  };
+
+  const isActive = (href) => {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
   };
 
   return (
     <header className="luxury-header">
       <div className="container">
         <nav className="luxury-navbar">
-          
-          {/* LOGO */}
-          <Link href="/" className="luxury-logo">
+          <Link href="/" className="luxury-logo" aria-label="Khushi Crochet Home">
             <Image
               src="/logo.png"
               alt="Khushi Crochet Logo"
@@ -36,156 +77,118 @@ export default function Navbar() {
             />
           </Link>
 
-          {/* TOGGLE */}
           <button
             type="button"
             className={`luxury-toggle ${menuOpen ? "active" : ""}`}
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={() => setMenuOpen((prev) => !prev)}
             aria-label="Toggle navigation"
+            aria-expanded={menuOpen}
           >
             <span></span>
             <span></span>
             <span></span>
           </button>
 
-          {/* MENU */}
           <div className={`luxury-menu ${menuOpen ? "show" : ""}`}>
-            
-            <a href="#home" className="luxury-link" onClick={() => setMenuOpen(false)}>
-              Home
-            </a>
+            {navLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`luxury-link ${isActive(item.href) ? "active-link" : ""}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
 
-            <a href="/products" className="luxury-link" onClick={() => setMenuOpen(false)}>
-              Shop
-            </a>
-
-            <a href="#about" className="luxury-link" onClick={() => setMenuOpen(false)}>
-              About
-            </a>
-
-            <a href="#custom-order-hero" className="luxury-link" onClick={() => setMenuOpen(false)}>
-              Custom Orders
-            </a>
-
-            <a href="#contact" className="luxury-link" onClick={() => setMenuOpen(false)}>
-              Contact
-            </a>
-
-            <Link href="/order-track" className="luxury-link" onClick={() => setMenuOpen(false)}>
-              Track Order
-            </Link>
-
-             <Link href="/cart" className="luxury-link cart-link" onClick={() => setMenuOpen(false)}>
-              Cart
+            <Link
+              href="/cart"
+              className={`luxury-link cart-link ${isActive("/cart") ? "active-link" : ""}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              <span>Cart</span>
               {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
             </Link>
 
-            {/* Show auth links only when not logged in */}
             {!authLoading && !user && (
               <>
-                <Link href="/login" className="luxury-link" onClick={() => setMenuOpen(false)}>
+                <Link
+                  href="/login"
+                  className={`luxury-link ${isActive("/login") ? "active-link" : ""}`}
+                  onClick={() => setMenuOpen(false)}
+                >
                   Login
                 </Link>
 
-                <Link href="/register" className="luxury-link" onClick={() => setMenuOpen(false)}>
+                <Link
+                  href="/register"
+                  className={`luxury-link ${isActive("/register") ? "active-link" : ""}`}
+                  onClick={() => setMenuOpen(false)}
+                >
                   Register
                 </Link>
               </>
             )}
 
-            {/* Show profile dropdown when logged in */}
             {!authLoading && user && (
-              <div className="profile-dropdown-wrapper">
+              <div className="profile-dropdown-wrapper" ref={dropdownRef}>
                 <button
+                  type="button"
                   className="luxury-link profile-button"
-                  onClick={() => setProfileDropdown(!profileDropdown)}
+                  onClick={() => setProfileDropdown((prev) => !prev)}
+                  aria-haspopup="menu"
+                  aria-expanded={profileDropdown}
                 >
-                  👤 {user.name}
+                  <span className="profile-avatar">👤</span>
+                  <span className="profile-name">{user.name}</span>
                 </button>
+
                 {profileDropdown && (
                   <div className="profile-dropdown-menu">
-                    <Link 
-                      href="/profile" 
-                      className="dropdown-item"
-                      style={{ '--icon': '"👤"' }}
-                      onClick={() => {
-                        setProfileDropdown(false);
-                        setMenuOpen(false);
-                      }}
-                    >
-                      <span style={{ fontSize: '16px' }}>👤</span>
+                    <Link href="/profile" className="dropdown-item">
+                      <span className="dropdown-icon">👤</span>
                       <span>My Profile</span>
                     </Link>
-                    <Link 
-                      href="/orders" 
-                      className="dropdown-item"
-                      onClick={() => {
-                        setProfileDropdown(false);
-                        setMenuOpen(false);
-                      }}
-                    >
-                      <span style={{ fontSize: '16px' }}>📦</span>
+
+                    <Link href="/orders" className="dropdown-item">
+                      <span className="dropdown-icon">📦</span>
                       <span>My Orders</span>
                     </Link>
-                    <Link 
-                      href="/confirmations" 
-                      className="dropdown-item"
-                      onClick={() => {
-                        setProfileDropdown(false);
-                        setMenuOpen(false);
-                      }}
-                    >
-                      <span style={{ fontSize: '16px' }}>✅</span>
+
+                    <Link href="/confirmations" className="dropdown-item">
+                      <span className="dropdown-icon">✅</span>
                       <span>Confirmations</span>
                     </Link>
-                    <Link 
-                      href="/wishlist" 
-                      className="dropdown-item"
-                      onClick={() => {
-                        setProfileDropdown(false);
-                        setMenuOpen(false);
-                      }}
-                    >
-                      <span style={{ fontSize: '16px' }}>❤️</span>
+
+                    <Link href="/wishlist" className="dropdown-item">
+                      <span className="dropdown-icon">❤️</span>
                       <span>Wishlist</span>
                     </Link>
-                    <Link 
-                      href="/account-settings" 
-                      className="dropdown-item"
-                      onClick={() => {
-                        setProfileDropdown(false);
-                        setMenuOpen(false);
-                      }}
-                    >
-                      <span style={{ fontSize: '16px' }}>⚙️</span>
+
+                    <Link href="/account-settings" className="dropdown-item">
+                      <span className="dropdown-icon">⚙️</span>
                       <span>Account Settings</span>
                     </Link>
+
                     {user.role === "admin" && (
-                      <Link 
-                        href="/admin" 
-                        className="dropdown-item admin-link"
-                        onClick={() => {
-                          setProfileDropdown(false);
-                          setMenuOpen(false);
-                        }}
-                      >
-                        <span style={{ fontSize: '16px' }}>🔧</span>
+                      <Link href="/admin" className="dropdown-item admin-link">
+                        <span className="dropdown-icon">🔧</span>
                         <span>Admin Panel</span>
                       </Link>
                     )}
+
                     <button
+                      type="button"
                       className="dropdown-item logout-item"
                       onClick={handleLogout}
-                      style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
                     >
-                      <span style={{ fontSize: '16px' }}>🚪</span>
+                      <span className="dropdown-icon">🚪</span>
                       <span>Logout</span>
                     </button>
                   </div>
                 )}
               </div>
             )}
-
           </div>
         </nav>
       </div>
@@ -193,26 +196,44 @@ export default function Navbar() {
       <style jsx>{`
         .cart-link {
           position: relative;
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 8px;
         }
 
         .cart-badge {
           position: absolute;
           top: -10px;
-          right: -14px;
-          background: var(--accent-dark);
-          color: white;
-          border-radius: 50%;
-          width: 22px;
+          right: -16px;
+          min-width: 22px;
           height: 22px;
-          display: flex;
+          padding: 0 6px;
+          background: var(--accent-dark);
+          color: #fff;
+          border-radius: 999px;
+          display: inline-flex;
           align-items: center;
           justify-content: center;
           font-size: 11px;
           font-weight: 700;
+          line-height: 1;
           box-shadow: var(--shadow-sm);
+        }
+
+        .active-link {
+          color: var(--accent);
+          position: relative;
+        }
+
+        .active-link::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          bottom: -6px;
+          width: 100%;
+          height: 2px;
+          background: var(--accent);
+          border-radius: 999px;
         }
 
         .profile-dropdown-wrapper {
@@ -222,41 +243,51 @@ export default function Navbar() {
         }
 
         .profile-button {
-          background: none;
+          background: transparent;
           border: none;
           cursor: pointer;
-          font-size: inherit;
-          padding: 0;
+          font: inherit;
           color: inherit;
-          transition: all 0.3s ease;
           display: flex;
           align-items: center;
           gap: 8px;
-          font-weight: 600;
+          padding: 0;
         }
 
         .profile-button:hover {
           color: var(--accent);
         }
 
-        .profile-dropdown-menu {
-          position: absolute;
-          top: calc(100% + 12px);
-          right: 0;
-          background: white;
-          border: 1px solid var(--line);
-          border-radius: var(--radius-xl);
-          min-width: 260px;
-          box-shadow: var(--shadow-lg);
-          z-index: 100;
-          overflow: hidden;
-          animation: slideDown 0.2s ease;
+        .profile-avatar {
+          font-size: 16px;
+          line-height: 1;
         }
 
-        @keyframes slideDown {
+        .profile-name {
+          max-width: 110px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .profile-dropdown-menu {
+          position: absolute;
+          top: calc(100% + 14px);
+          right: 0;
+          width: 260px;
+          background: #fff;
+          border: 1px solid var(--line);
+          border-radius: 20px;
+          box-shadow: var(--shadow-lg);
+          overflow: hidden;
+          z-index: 999;
+          animation: dropdownFade 0.22s ease;
+        }
+
+        @keyframes dropdownFade {
           from {
             opacity: 0;
-            transform: translateY(-12px);
+            transform: translateY(-8px);
           }
           to {
             opacity: 1;
@@ -265,20 +296,20 @@ export default function Navbar() {
         }
 
         .dropdown-item {
+          width: 100%;
           display: flex;
           align-items: center;
-          width: 100%;
-          text-align: left;
+          gap: 12px;
           padding: 14px 18px;
           border: none;
-          background: none;
-          cursor: pointer;
-          color: var(--text-dark);
+          background: transparent;
           text-decoration: none;
-          transition: all 0.2s ease;
+          color: var(--text-dark);
           font-size: 14px;
           font-weight: 500;
-          gap: 12px;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.2s ease;
         }
 
         .dropdown-item:not(:last-child) {
@@ -286,78 +317,65 @@ export default function Navbar() {
         }
 
         .dropdown-item:hover {
-          background: linear-gradient(90deg, rgba(196, 168, 120, 0.08) 0%, rgba(196, 168, 120, 0.03) 100%);
+          background: rgba(196, 168, 120, 0.08);
           color: var(--accent);
-          padding-left: 22px;
         }
 
-        .dropdown-item::before {
-          content: attr(data-icon);
+        .dropdown-icon {
+          width: 18px;
+          display: inline-flex;
+          justify-content: center;
           flex-shrink: 0;
-          font-size: 16px;
-        }
-
-        .logout-item {
-          color: #d32f2f;
-          font-weight: 600;
-          border-top: 1px solid var(--line-light);
-          margin-top: 4px;
-          padding-top: 14px;
-        }
-
-        .logout-item:hover {
-          background: linear-gradient(90deg, rgba(211, 47, 47, 0.08) 0%, rgba(211, 47, 47, 0.03) 100%);
-          color: #b71c1c;
-          padding-left: 22px;
+          font-size: 15px;
         }
 
         .admin-link {
           color: var(--accent-dark);
           font-weight: 600;
-          background: linear-gradient(90deg, rgba(196, 168, 120, 0.06) 0%, transparent 100%);
+          background: rgba(196, 168, 120, 0.06);
         }
 
-        .admin-link:hover {
-          background: linear-gradient(90deg, rgba(196, 168, 120, 0.12) 0%, rgba(196, 168, 120, 0.06) 100%);
-          color: var(--accent);
-          padding-left: 22px;
+        .logout-item {
+          color: #c62828;
+          font-weight: 600;
+        }
+
+        .logout-item:hover {
+          background: rgba(198, 40, 40, 0.08);
+          color: #a61d1d;
         }
 
         @media (max-width: 768px) {
+          .active-link::after {
+            display: none;
+          }
+
+          .cart-link {
+            display: flex;
+            width: 100%;
+          }
+
+          .cart-badge {
+            position: static;
+            margin-left: 6px;
+          }
+
+          .profile-dropdown-wrapper {
+            width: 100%;
+            display: block;
+          }
+
+          .profile-button {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
           .profile-dropdown-menu {
             position: static;
+            width: 100%;
+            margin-top: 10px;
+            border-radius: 16px;
             box-shadow: none;
-            border: none;
-            margin-top: 0;
-            background: transparent;
-            border-radius: 0;
-            animation: none;
-            border-top: 1px solid var(--line);
-          }
-
-          .dropdown-item {
-            padding: 16px 18px;
-            font-size: 14px;
-            border-bottom: 1px solid var(--line-light);
-          }
-
-          .dropdown-item:hover {
-            background: var(--cream);
-            padding-left: 18px;
-          }
-
-          .logout-item {
-            border-top: 1px solid var(--line-light);
-            margin-top: 8px;
-            padding-top: 16px;
-          }
-
-          .admin-link {
-            background: transparent;
-          }
-
-          .admin-link:hover {
-            background: var(--cream);
           }
         }
       `}</style>

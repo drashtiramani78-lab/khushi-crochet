@@ -356,18 +356,17 @@ export default function ProductsPage() {
                     <p className="product-short-desc">
                       {product?.description
                         ? product.description.slice(0, 90) +
-                          (product.description.length > 90 ? "..." : "")
+                        (product.description.length > 90 ? "..." : "")
                         : "Beautifully handcrafted crochet piece made with care."}
                     </p>
 
                     <div className="product-meta">
                       <span className="product-price">₹{productPrice}</span>
                       <span
-                        className={`stock-pill ${
-                          (product?.inventory || 0) > 0
+                        className={`stock-pill ${(product?.inventory || 0) > 0
                             ? "in-stock"
                             : "out-of-stock"
-                        }`}
+                          }`}
                       >
                         {(product?.inventory || 0) > 0
                           ? "In Stock"
@@ -382,9 +381,8 @@ export default function ProductsPage() {
 
                       <button
                         type="button"
-                        className={`product-outline-btn ${
-                          addedToCart[product?._id] ? "added" : ""
-                        }`}
+                        className={`product-outline-btn ${addedToCart[product?._id] ? "added" : ""
+                          }`}
                         onClick={() => handleQuickAddToCart(product)}
                         disabled={(product?.inventory || 0) <= 0}
                       >
@@ -410,7 +408,7 @@ export default function ProductsPage() {
         {products.length > 0 && (
           <div className="products-bottom-cta">
             <p>Looking for something more personal?</p>
-            <Link href="/#custom-order-hero" className="product-dark-btn cta-btn">
+            <Link href="/custom-order" className="product-dark-btn cta-btn">
               Request a Custom Order
             </Link>
           </div>

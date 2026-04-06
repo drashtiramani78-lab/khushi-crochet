@@ -83,8 +83,8 @@ export async function POST(req) {
     }
 
     // Normalize price to number
-    const price = typeof body.price === "string" 
-      ? parseFloat(body.price) 
+    const price = typeof body.price === "string"
+      ? parseFloat(body.price)
       : Number(body.price);
 
     const productData = {
@@ -94,7 +94,14 @@ export async function POST(req) {
       description: body.description || "",
       inventory: Number(body.inventory) || 0,
       category: body.category || "",
-      slug: body.slug || body.name.toLowerCase().replace(/\s+/g, "-"),
+      slug:
+        body.slug ||
+        body.name
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-"),
     };
 
     const product = await Product.create(productData);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -11,7 +11,9 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const { addToCart } = useCart();
 
-  const id = params?.id;
+  const id = useMemo(() => {
+    return typeof params?.id === "string" ? params.id : "";
+  }, [params]);
 
   const [product, setProduct] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,15 +23,25 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     async function fetchProduct() {
-      if (!id) return;
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
 
       try {
-        const res = await fetch(`/api/products/${id}`);
+        setIsLoading(true);
 
-        if (!res.ok) throw new Error("Product not found");
+        const res = await fetch(`/api/products/${encodeURIComponent(id)}`, {
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          throw new Error("Product not found");
+        }
 
         const data = await res.json();
         setProduct(data);
+        setImageError(false);
       } catch (error) {
         console.error("Error fetching product:", error);
         setProduct(null);
@@ -62,6 +74,16 @@ export default function ProductDetailPage() {
     typeof product?.price === "string"
       ? product.price
       : Number(product?.price || 0).toFixed(2);
+
+  const safeImage =
+    product?.image &&
+    typeof product.image === "string" &&
+    !product.image.startsWith("blob:") &&
+    product.image.trim() !== "" &&
+    product.image !== "undefined" &&
+    product.image !== "null"
+      ? product.image
+      : null;
 
   if (isLoading) {
     return (
@@ -105,13 +127,14 @@ export default function ProductDetailPage() {
 
         <div className="product-details-grid">
           <div className="product-details-image-wrap">
-            {!imageError && product.image && !product.image.startsWith("blob:") ? (
+            {!imageError && safeImage ? (
               <Image
-                src={product.image}
+                src={safeImage}
                 alt={product.name}
                 width={700}
                 height={800}
                 className="product-details-main-image"
+                unoptimized
                 onError={() => setImageError(true)}
               />
             ) : (
