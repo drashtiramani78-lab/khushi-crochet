@@ -1,32 +1,14 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/user";
-import { createToken } from "@/lib/auth";
-import { checkAndLimitRequest, RATE_LIMIT_PRESETS } from "@/lib/rateLimitHelper";
-import { sanitizeRequestBodyAuto, checkXSSThreats, sanitizeEmail } from "@/lib/sanitization";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export async function POST(req) {
-  // Apply rate limiting: 5 attempts per 15 minutes
-  const rateLimitResponse = checkAndLimitRequest(req, "/api/auth/login", RATE_LIMIT_PRESETS.AUTH);
-  if (rateLimitResponse) return rateLimitResponse;
-
   try {
     await connectDB();
 
-    let body = await req.json();
-
-    // Check for XSS threats
-    const xssCheck = checkXSSThreats(body);
-    if (xssCheck.hasThreat) {
-      console.warn("[XSS ALERT] Login attempt detected XSS patterns:", xssCheck.threats);
-    }
-
-    // Sanitize input (except password)
-    body = sanitizeRequestBodyAuto(body, {
-      emailFields: ["email"],
-    });
-
+    const body = await req.json();
     const { email, password } = body;
 
     if (!email || !password) {
@@ -36,7 +18,7 @@ export async function POST(req) {
       );
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
 
     if (!user) {
       return NextResponse.json(
@@ -54,25 +36,20 @@ export async function POST(req) {
       );
     }
 
-    const token = createToken(user);
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     const response = NextResponse.json(
-      {
-        message: "Login successful",
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-        },
-      },
+      { message: "Login successful", user: { id: user._id, email: user.email, name: user.name } },
       { status: 200 }
     );
 
-    response.cookies.set("user_token", token, {
+    response.cookies.set("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: false,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
