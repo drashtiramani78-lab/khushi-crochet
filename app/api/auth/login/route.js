@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/user";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { createToken } from "@/lib/auth";
 
 export async function POST(req) {
   try {
@@ -18,7 +18,9 @@ export async function POST(req) {
       );
     }
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const cleanEmail = email.toLowerCase().trim();
+
+    const user = await User.findOne({ email: cleanEmail });
 
     if (!user) {
       return NextResponse.json(
@@ -36,20 +38,30 @@ export async function POST(req) {
       );
     }
 
-    const token = jwt.sign(
-      { userId: user._id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = createToken({
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    });
 
     const response = NextResponse.json(
-      { message: "Login successful", user: { id: user._id, email: user.email, name: user.name } },
+      {
+        message: "Login successful",
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || "",
+          role: user.role || "user",
+        },
+      },
       { status: 200 }
     );
 
-    response.cookies.set("token", token, {
+    response.cookies.set("user_token", token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
@@ -58,8 +70,11 @@ export async function POST(req) {
     return response;
   } catch (error) {
     console.error("LOGIN ERROR:", error);
+
     return NextResponse.json(
-      { message: error.message || "Login failed" },
+      {
+        message: error?.message || "Login failed",
+      },
       { status: 500 }
     );
   }

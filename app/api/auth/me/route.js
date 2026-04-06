@@ -7,10 +7,6 @@ import User from "@/models/user";
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    
-    // ONLY check for regular user authentication (NOT admin)
-    // This endpoint is for user section only
-    await connectDB();
     const token = cookieStore.get("user_token")?.value;
 
     if (!token) {
@@ -23,6 +19,8 @@ export async function GET() {
       return NextResponse.json({ user: null }, { status: 200 });
     }
 
+    await connectDB();
+
     const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
@@ -32,8 +30,11 @@ export async function GET() {
     return NextResponse.json({ user }, { status: 200 });
   } catch (error) {
     console.error("ME ERROR:", error);
+
     return NextResponse.json(
-      { message: "Failed to fetch user" },
+      {
+        message: error?.message || "Failed to fetch user",
+      },
       { status: 500 }
     );
   }
