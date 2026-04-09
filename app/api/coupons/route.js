@@ -4,8 +4,6 @@ import { jwtVerify } from 'jose';
 import { getJoseSecret } from '@/lib/auth';
 import { sanitizeString, checkXSSThreats } from '@/lib/sanitization';
 
-const secret = getJoseSecret();
-
 export async function GET(req) {
   try {
     await connectDB();
@@ -62,7 +60,7 @@ export async function POST(req) {
       );
     }
     
-    const verified = await jwtVerify(token, secret);
+    const verified = await jwtVerify(token, getJoseSecret());
     const userId = verified.payload.userId;
     
     let body = await req.json();
@@ -135,6 +133,23 @@ export async function POST(req) {
       discount = coupon.discountValue;
     }
     
+    // ========== UPDATE USAGE TRACKING ==========
+    coupon.usageCount += 1;
+    
+    // Update or add user to usedBy array
+    const userUsageIndex = coupon.usedBy.findIndex(u => u.userId.toString() === userId);
+    if (userUsageIndex > -1) {
+      coupon.usedBy[userUsageIndex].usedCount += 1;
+    } else {
+      coupon.usedBy.push({
+        userId,
+        usedCount: 1
+      });
+    }
+    
+    await coupon.save();
+    // ==========================================
+    
     return Response.json({
       success: true,
       data: {
@@ -151,3 +166,4 @@ export async function POST(req) {
     );
   }
 }
+

@@ -5,13 +5,11 @@ import { jwtVerify } from 'jose';
 import { getJoseSecret } from '@/lib/auth';
 import { sanitizeRequestBodyAuto, checkXSSThreats } from '@/lib/sanitization';
 
-const secret = getJoseSecret();
-
 async function verifyAdmin(req) {
   const token = req.headers.get('authorization')?.split(' ')[1];
   if (!token) throw new Error('Not authenticated');
   
-  const verified = await jwtVerify(token, secret);
+  const verified = await jwtVerify(token, getJoseSecret());
   if (verified.payload.role !== 'admin') {
     throw new Error('Not authorized');
   }
