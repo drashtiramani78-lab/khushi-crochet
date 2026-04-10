@@ -3,8 +3,15 @@ import CustomOrder from "@/models/customorders";
 import { NextResponse } from "next/server";
 import { sendCustomOrderConfirmation } from "@/lib/notifications";
 import { getAuthUser } from "@/lib/auth";
+import { v2 as cloudinary } from "cloudinary";
 import { cookies } from "next/headers";
 import { sanitizeRequestBodyAuto, checkXSSThreats } from "@/lib/sanitization";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 async function checkAdminAuth() {
   const cookieStore = await cookies();
@@ -148,13 +155,37 @@ export async function POST(req) {
         deadline: sanitized.deadline,
         subject: sanitized.subject,
         message: sanitized.message,
-        referenceImage:
-          imageFile && typeof imageFile === "object" && "name" in imageFile
-            ? imageFile.name
-            : normalizeValue(formData.get("referenceImage"), formData.get("image")),
+        referenceImage: "",
         status: "Pending",
         userId: authUser._id,
       };
+
+      // Upload reference image (optional) to Cloudinary if available
+      if (imageFile && typeof imageFile === "object" && "arrayBuffer" in imageFile && imageFile.size > 0) {
+        const hasCloudinary =
+          !!process.env.CLOUDINARY_CLOUD_NAME &&
+          !!process.env.CLOUDINARY_API_KEY &&
+          !!process.env.CLOUDINARY_API_SECRET;
+
+        if (hasCloudinary) {
+          const bytes = await imageFile.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+
+          const uploadRes = await new Promise((resolve, reject) => {
+            cloudinary.uploader
+              .upload_stream({ folder: "custom-orders" }, (err, result) => {
+                if (err) reject(err);
+                else resolve(result);
+              })
+              .end(buffer);
+          });
+
+          payload.referenceImage = uploadRes?.secure_url || "";
+        }
+      } else {
+        // If client sends a URL string instead of a file
+        payload.referenceImage = normalizeValue(formData.get("referenceImage"), formData.get("image"));
+      }
     } else {
       let body = await req.json();
 
