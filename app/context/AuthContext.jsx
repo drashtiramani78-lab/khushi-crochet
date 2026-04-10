@@ -9,17 +9,25 @@ export function AuthProvider({ children }) {
   const [authLoading, setAuthLoading] = useState(true);
 
   const fetchUser = async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch("/api/auth/me", {
         next: { revalidate: 300 },
         credentials: "include",
+        signal: controller.signal,
       });
-      const data = await res.json();
-      setUser(data.user || null);
+      const contentType = res.headers.get("content-type") || "";
+      const raw = await res.text();
+      const data =
+        contentType.includes("application/json") && raw ? JSON.parse(raw) : null;
+
+      setUser(data?.user || null);
     } catch (error) {
       console.error("Fetch user error:", error);
       setUser(null);
     } finally {
+      clearTimeout(timeoutId);
       setAuthLoading(false);
     }
   };
