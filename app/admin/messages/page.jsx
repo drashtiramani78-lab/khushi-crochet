@@ -166,10 +166,20 @@ export default function AdminMessagesPage() {
 
         <div className="admin-sidebar-section">
           <div className="admin-sidebar-title">System</div>
-          <Link href="/admin-login" className="admin-sidebar-link">
+          <button
+            onClick={handleLogout}
+            className="admin-sidebar-link"
+            style={{
+              background: "none",
+              border: "none",
+              width: "100%",
+              textAlign: "left",
+              cursor: "pointer",
+            }}
+          >
             <span className="admin-sidebar-icon">🚪</span>
             Logout
-          </Link>
+          </button>
         </div>
       </aside>
 

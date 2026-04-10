@@ -24,17 +24,15 @@ export default function AccountSettings() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/login?redirect=/account-settings');
-        return;
-      }
+    if (!authLoading && user) {
       setFormData({
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
       });
       setLoading(false);
+    } else if (!authLoading && !user) {
+      router.push('/login?redirect=/account-settings');
     }
   }, [authLoading, user, router]);
 
@@ -75,7 +73,8 @@ export default function AccountSettings() {
       } else {
         setError(data.error || 'Failed to update profile');
       }
-    } catch (err) {
+    } catch (e) {
+      console.error('Profile update error:', e);
       setError('Error updating profile');
     }
   };
@@ -115,7 +114,8 @@ export default function AccountSettings() {
       } else {
         setError(data.error || 'Failed to change password');
       }
-    } catch (err) {
+    } catch (e) {
+      console.error('Password update error:', e);
       setError('Error changing password');
     }
   };

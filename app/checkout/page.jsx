@@ -1,12 +1,14 @@
 "use client";
 
+import "../../app/styles/checkout.css";
 import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
 import { useAuth } from "@/app/context/AuthContext";
 import Link from "next/link";
-import { initiatePayment, PAYMENT_METHOD_DETAILS } from "@/lib/payments";
+import CouponInput from "../components/CouponInput";
+
 
 function CheckoutContent() {
   const router = useRouter();
@@ -23,6 +25,7 @@ function CheckoutContent() {
   const [formErrors, setFormErrors] = useState({});
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [copied, setCopied] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState({ couponCode: '', discount: 0, finalTotal: 0 });
 
   const [form, setForm] = useState({
     name: "",
@@ -35,11 +38,11 @@ function CheckoutContent() {
     transactionId: "",
   });
 
+
   // =========================
   // CHANGE THESE 2 VALUES
   // =========================
   const UPI_ID = "drashtiramani78@okhdfcbank"; // example: khushicrochet@okaxis
-  const QR_IMAGE ="/upi-qr.png"; // put your QR image inside public folder
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -142,13 +145,17 @@ function CheckoutContent() {
     }
   };
 
-  const createOrder = async (totalAmount) => {
+  const createOrder = async () => {
     try {
       const orderData = {
         customerName: form.name,
         email: form.email,
         phone: form.phone,
-        address: `${form.address}, ${form.city}, ${form.state} - ${form.pincode}`,
+        address: form.address,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+        country: 'India',
         items: cart.map((item) => ({
           productId: item._id,
           name: item.name,
@@ -159,7 +166,12 @@ function CheckoutContent() {
           quantity: item.quantity,
           image: item.image,
         })),
+        subtotal: getCartTotal(),
+        shippingCost: 0,
+        couponCode: appliedCoupon.couponCode,
+        discount: appliedCoupon.discount,
         totalAmount: totalAmount,
+
         paymentMethod: paymentMethod,
         paymentStatus: paymentMethod === "cod" ? "pending" : "pending_verification",
         orderStatus: "pending",
@@ -246,47 +258,52 @@ function CheckoutContent() {
     );
   }
 
-  const totalAmount = getCartTotal();
+  const subtotal = getCartTotal();
+  const totalAmount = appliedCoupon.finalTotal > 0 ? appliedCoupon.finalTotal : subtotal;
+
 
   return (
-    <div style={styles.page}>
+    <div className="checkout-page">
       <div className="container">
-        <div style={styles.pageHeader}>
-          <div style={styles.breadcrumb}>
-            <Link href="/" style={styles.breadcrumbLink}>
+        <div className="checkout-page-header">
+          <div className="checkout-breadcrumb">
+            <Link href="/" className="checkout-breadcrumb-link">
               Home
             </Link>
-            <span style={styles.breadcrumbSeparator}>/</span>
-            <Link href="/cart" style={styles.breadcrumbLink}>
+            <span className="checkout-breadcrumb-separator">/</span>
+            <Link href="/cart" className="checkout-breadcrumb-link">
               Cart
             </Link>
-            <span style={styles.breadcrumbSeparator}>/</span>
-            <span style={styles.breadcrumbCurrent}>Checkout</span>
+            <span className="checkout-breadcrumb-separator">/</span>
+            <span className="checkout-breadcrumb-current">Checkout</span>
           </div>
-          <h1 style={styles.heading}>Complete Your Order</h1>
+          <h1 className="checkout-heading">Complete Your Order</h1>
         </div>
 
-        <div style={styles.wrapper}>
-          <div style={styles.left}>
-            <h2 style={styles.sectionTitle}>Shipping Address</h2>
+        <div className="checkout-wrapper">
+          <div className="checkout-left">
+            <h2 className="checkout-section-title">Shipping Address</h2>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Full Name *</label>
+            <div className="checkout-form-group">
+              <label className="checkout-label">Full Name *</label>
               <input
                 type="text"
                 name="name"
                 placeholder="John Doe"
                 value={form.name}
                 onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  borderColor: formErrors.name ? "#dc3545" : "#ddd3c7",
-                }}
+                className={`checkout-input ${formErrors.name ? "error" : ""}`}
               />
               {formErrors.name && (
-                <span style={styles.error}>{formErrors.name}</span>
+                <span className="checkout-error">{formErrors.name}</span>
               )}
             </div>
+
+            <CouponInput 
+              cartTotal={subtotal}
+              onCouponApply={setAppliedCoupon}
+              className="checkout-coupon-section"
+            /> 
 
             <div style={styles.formGroup}>
               <label style={styles.label}>Email *</label>

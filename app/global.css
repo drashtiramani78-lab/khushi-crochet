@@ -23,3 +23,6 @@
 @import './styles/admin-custom.css';
 @import './styles/admin-layouts.css';
 @import './styles/admin-dashboard.css';
+@import './styles/login.css';
+@import './styles/register.css';
+@import './styles/admin-users.css';

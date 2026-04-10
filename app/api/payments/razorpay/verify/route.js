@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Order from "@/models/order";
-import crypto from "crypto";
 
 export async function POST(req) {
-  const { orderId, paymentId, signature } = await req.json();
+  const { orderId, paymentId } = await req.json();
 
   if (!orderId || !paymentId) {
     return NextResponse.json(

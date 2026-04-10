@@ -21,15 +21,37 @@ export default function AdminReviews() {
     }
   };
 
-  const fetchReviews = async () => {
+  const fetchReviews = async (nextFilter = filter) => {
     try {
       setLoading(true);
+      const statusParam =
+        nextFilter === "all"
+          ? "all"
+          : nextFilter === "pending"
+          ? "pending"
+          : "approved";
       const res = await fetch("/api/admin/reviews", {
         cache: "no-store",
       });
 
       const data = await res.json();
-      setReviews(Array.isArray(data.data) ? data.data : []);
+      if (!res.ok) {
+        console.error("Admin reviews API error:", data);
+        setReviews([]);
+        return;
+      }
+
+      // If API supports status filtering, request it; otherwise fall back to client filtering.
+      // (We call the endpoint again only when filter changes.)
+      if (statusParam) {
+        const filteredRes = await fetch(`/api/admin/reviews?status=${encodeURIComponent(statusParam)}`, {
+          cache: "no-store",
+        });
+        const filteredData = await filteredRes.json();
+        setReviews(Array.isArray(filteredData?.data) ? filteredData.data : []);
+      } else {
+        setReviews(Array.isArray(data.data) ? data.data : []);
+      }
     } catch (error) {
       console.error("Failed to fetch reviews:", error);
       setReviews([]);
@@ -39,23 +61,23 @@ export default function AdminReviews() {
   };
 
   useEffect(() => {
-    fetchReviews();
+    fetchReviews(filter);
   }, []);
 
   const handleApprove = async (reviewId) => {
     try {
-      const res = await fetch("/api/admin/reviews", {
+      const res = await fetch(`/api/admin/reviews?id=${encodeURIComponent(reviewId)}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ reviewId, verified: true }),
+        body: JSON.stringify({ status: "approved" }),
       });
 
       if (res.ok) {
         setSuccessMessage("Review approved!");
         setTimeout(() => setSuccessMessage(""), 3000);
-        fetchReviews();
+        fetchReviews(filter);
       }
     } catch (error) {
       console.error("Error approving review:", error);
@@ -65,18 +87,18 @@ export default function AdminReviews() {
 
   const handleReject = async (reviewId) => {
     try {
-      const res = await fetch("/api/admin/reviews", {
+      const res = await fetch(`/api/admin/reviews?id=${encodeURIComponent(reviewId)}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ reviewId, verified: false }),
+        body: JSON.stringify({ status: "rejected" }),
       });
 
       if (res.ok) {
         setSuccessMessage("Review marked as rejected!");
         setTimeout(() => setSuccessMessage(""), 3000);
-        fetchReviews();
+        fetchReviews(filter);
       }
     } catch (error) {
       console.error("Error rejecting review:", error);
@@ -88,18 +110,17 @@ export default function AdminReviews() {
     if (!window.confirm("Delete this review permanently?")) return;
 
     try {
-      const res = await fetch("/api/admin/reviews", {
+      const res = await fetch(`/api/admin/reviews?id=${encodeURIComponent(reviewId)}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ reviewId }),
       });
 
       if (res.ok) {
         setSuccessMessage("Review deleted!");
         setTimeout(() => setSuccessMessage(""), 3000);
-        fetchReviews();
+        fetchReviews(filter);
       }
     } catch (error) {
       console.error("Error deleting review:", error);
@@ -107,9 +128,14 @@ export default function AdminReviews() {
     }
   };
 
+  const isApproved = (review) =>
+    review?.status === "approved" || review?.verified === true;
+  const isPending = (review) =>
+    review?.status === "pending" || review?.verified === false;
+
   const filteredReviews = reviews.filter((review) => {
-    if (filter === "verified") return review.verified;
-    if (filter === "pending") return !review.verified;
+    if (filter === "verified") return isApproved(review);
+    if (filter === "pending") return isPending(review);
     return true;
   });
 
@@ -223,22 +249,31 @@ export default function AdminReviews() {
           <div className="admin-card">
             <div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
               <button
-                onClick={() => setFilter("all")}
+                onClick={() => {
+                  setFilter("all");
+                  fetchReviews("all");
+                }}
                 className={`admin-button ${filter === "all" ? "admin-button-primary" : "admin-button-secondary"}`}
               >
                 All Reviews ({reviews.length})
               </button>
               <button
-                onClick={() => setFilter("pending")}
+                onClick={() => {
+                  setFilter("pending");
+                  fetchReviews("pending");
+                }}
                 className={`admin-button ${filter === "pending" ? "admin-button-primary" : "admin-button-secondary"}`}
               >
-                Pending ({reviews.filter((r) => !r.verified).length})
+                Pending ({reviews.filter((r) => isPending(r)).length})
               </button>
               <button
-                onClick={() => setFilter("verified")}
+                onClick={() => {
+                  setFilter("verified");
+                  fetchReviews("verified");
+                }}
                 className={`admin-button ${filter === "verified" ? "admin-button-primary" : "admin-button-secondary"}`}
               >
-                Approved ({reviews.filter((r) => r.verified).length})
+                Approved ({reviews.filter((r) => isApproved(r)).length})
               </button>
             </div>
 
@@ -283,19 +318,19 @@ export default function AdminReviews() {
                       <div
                         style={{
                           padding: "4px 12px",
-                          background: review.verified ? "#16a34a" : "#f59e0b",
+                          background: isApproved(review) ? "#16a34a" : "#f59e0b",
                           color: "white",
                           borderRadius: "4px",
                           fontSize: "12px",
                           fontWeight: "600",
                         }}
                       >
-                        {review.verified ? "✓ APPROVED" : "⏳ PENDING"}
+                        {isApproved(review) ? "✓ APPROVED" : "⏳ PENDING"}
                       </div>
                     </div>
 
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {!review.verified && (
+                      {!isApproved(review) && (
                         <button
                           onClick={() => handleApprove(review._id)}
                           className="admin-button"
@@ -311,7 +346,7 @@ export default function AdminReviews() {
                           ✓ Approve
                         </button>
                       )}
-                      {review.verified && (
+                      {isApproved(review) && (
                         <button
                           onClick={() => handleReject(review._id)}
                           className="admin-button"

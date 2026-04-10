@@ -10,24 +10,31 @@ export function useAdminAuth() {
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    const checkAdminAuth = async () => {
+    const checkAdminAuth = async (retries = 3) => {
       try {
-        const res = await fetch("/api/auth/admin", {
-          cache: "no-store",
-          credentials: "include",
-        });
-        const data = await res.json();
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            const res = await fetch("/api/auth/admin", {
+              cache: "no-store",
+              credentials: "include",
+            });
+            const data = await res.json();
 
-        if (data.user && data.user.role === "admin") {
-          setUser(data.user);
-          setIsAuthorized(true);
-        } else {
-          setUser(null);
-          setIsAuthorized(false);
-          router.push("/admin-login");
+            if (data.user && data.user.role === "admin") {
+              setUser(data.user);
+              setIsAuthorized(true);
+              return;
+            }
+          } catch (error) {
+            console.warn(`Admin auth check attempt ${attempt} failed:`, error);
+          }
+
+          if (attempt < retries) {
+            await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+          }
         }
-      } catch (error) {
-        console.error("Admin auth check error:", error);
+
+        // All retries failed
         setUser(null);
         setIsAuthorized(false);
         router.push("/admin-login");

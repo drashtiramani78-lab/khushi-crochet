@@ -9,7 +9,7 @@
  */
 
 import mongoose from "mongoose";
-import bcryptjs from "bcryptjs";
+
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -35,7 +35,7 @@ async function seedAdmin() {
   try {
     // Connect to MongoDB
     console.log("🔌 Connecting to MongoDB...");
-    await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(MONGODB_URI, { dbName: "khushi-crochet" });
     console.log("✅ Connected to MongoDB");
 
     // Default credentials (should be changed in production)

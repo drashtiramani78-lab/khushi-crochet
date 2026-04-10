@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
   const fetchUser = async () => {
     try {
       const res = await fetch("/api/auth/me", {
-        cache: "no-store",
+        next: { revalidate: 300 },
         credentials: "include",
       });
       const data = await res.json();

@@ -75,7 +75,7 @@ const AdminSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-AdminSchema.pre("save", async function (next) {
+AdminSchema.pre("save", async function () {
   if (!this.isModified("password")) {
     return;
   }
@@ -130,5 +130,7 @@ AdminSchema.methods.resetLoginAttempts = async function () {
     $unset: { lockUntil: 1 },
   });
 };
+
+AdminSchema.index({ username: 1 });
 
 export default mongoose.models.Admin || mongoose.model("Admin", AdminSchema);

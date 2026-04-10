@@ -5,8 +5,8 @@ import CustomOrder from "@/models/customorders";
 
 async function checkAdminAuth() {
   const cookieStore = await cookies();
-  const adminAuth = cookieStore.get("admin_auth");
-  return adminAuth?.value === "true";
+  const adminAuth = cookieStore.get("admin_auth")?.value;
+  return adminAuth === "true";
 }
 
 export async function GET() {

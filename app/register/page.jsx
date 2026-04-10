@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/app/context/AuthContext";
+import "@/app/styles/register.css";
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
-  const { fetchUser } = useAuth();
 
   const [form, setForm] = useState({
     name: "",
@@ -15,6 +14,7 @@ export default function RegisterPage() {
     phone: "",
     password: "",
   });
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -43,138 +43,120 @@ export default function RegisterPage() {
 
       if (!res.ok) {
         setMessage(data.message || "Registration failed");
-        setLoading(false);
         return;
       }
 
-      // Refresh user from context after registration
-      await fetchUser();
-      
-      // Redirect to login page
+      setMessage("Registration successful! Redirecting to login...");
       router.push("/login");
     } catch (error) {
-      console.error(error);
-      setMessage("Something went wrong");
+      console.error("Registration error:", error);
+      setMessage("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const getMessageClass = () => {
+    if (message.includes("successful")) return "success";
+    return "error";
+  };
+
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Create Account</h1>
-        <p style={styles.subtitle}>Register to continue shopping</p>
+    <div className="register-page">
+      <div className="register-card">
+        <h1 className="register-title">Create Account</h1>
+        <p className="register-subtitle">Join to discover handmade crochet magic</p>
 
-        {message ? <p style={styles.error}>{message}</p> : null}
+        {message && (
+          <div className={`register-message ${getMessageClass()}`}>
+            {message}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            value={form.name}
-            onChange={handleChange}
-            style={styles.input}
-            required
-          />
+        <form onSubmit={handleSubmit} className="register-form">
+          <div>
+            <label className="register-label">Full Name *</label>
+            <input
+              type="text"
+              name="name"
+              placeholder="Full Name"
+              value={form.name}
+              onChange={handleChange}
+              className="register-input"
+              required
+            />
+          </div>
 
-          <input
-            type="email"
-            name="email"
-            placeholder="Email Address"
-            value={form.email}
-            onChange={handleChange}
-            style={styles.input}
-            required
-          />
+          <div>
+            <label className="register-label">Email Address *</label>
+            <input
+              type="email"
+              name="email"
+              placeholder="Email Address"
+              value={form.email}
+              onChange={handleChange}
+              className="register-input"
+              required
+            />
+          </div>
 
-          <input
-            type="text"
-            name="phone"
-            placeholder="Phone Number"
-            value={form.phone}
-            onChange={handleChange}
-            style={styles.input}
-          />
+          <div>
+            <label className="register-label">Phone Number</label>
+            <input
+              type="tel"
+              name="phone"
+              placeholder="Phone Number"
+              value={form.phone}
+              onChange={handleChange}
+              className="register-input"
+            />
+          </div>
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            style={styles.input}
-            required
-          />
+          <div>
+            <label className="register-label">Password *</label>
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              value={form.password}
+              onChange={handleChange}
+              className="register-input"
+              required
+            />
+          </div>
 
-          <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? "Creating..." : "Register"}
+          <button
+            type="submit"
+            disabled={loading}
+            className="register-submit"
+          >
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
-        <p style={styles.linkText}>
-          Already have an account? <Link href="/login">Login</Link>
-        </p>
+        <div className="register-link-section">
+          Already have an account?{" "}
+          <Link href="/login" className="register-link">
+            Sign in
+          </Link>
+        </div>
       </div>
     </div>
   );
 }
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "#f8f5f0",
-    padding: "20px",
-  },
-  card: {
-    width: "100%",
-    maxWidth: "420px",
-    background: "#fff",
-    padding: "30px",
-    borderRadius: "16px",
-    boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
-  },
-  title: {
-    fontSize: "30px",
-    marginBottom: "10px",
-    textAlign: "center",
-  },
-  subtitle: {
-    textAlign: "center",
-    color: "#777",
-    marginBottom: "20px",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "14px",
-  },
-  input: {
-    padding: "14px",
-    borderRadius: "10px",
-    border: "1px solid #ddd",
-    fontSize: "15px",
-  },
-  button: {
-    padding: "14px",
-    border: "none",
-    borderRadius: "10px",
-    background: "#b08d57",
-    color: "#fff",
-    fontSize: "16px",
-    cursor: "pointer",
-  },
-  error: {
-    color: "red",
-    textAlign: "center",
-    marginBottom: "10px",
-  },
-  linkText: {
-    textAlign: "center",
-    marginTop: "18px",
-  },
-};
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="register-page">
+          <div className="register-card">
+            <div className="text-xl font-semibold text-center animate-pulse">Loading...</div>
+          </div>
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
+  );
+}

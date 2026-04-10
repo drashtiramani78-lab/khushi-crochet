@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import Link from "next/link";
@@ -9,8 +9,6 @@ import "../styles/profile.css";
 export default function Confirmations() {
   const router = useRouter();
   const { user, authLoading } = useAuth();
-  const [loading, setLoading] = useState(false);
-
   useEffect(() => {
     if (!authLoading) {
       if (!user) {

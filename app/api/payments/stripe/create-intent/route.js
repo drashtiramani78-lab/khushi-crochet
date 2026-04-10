@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import Order from "@/models/order";
 
 export async function POST(req) {
-  const { amount, currency, orderId, customerEmail } = await req.json();
+  const { amount, currency, orderId } = await req.json();
 
   if (!amount || !orderId) {
     return NextResponse.json(
@@ -13,8 +11,6 @@ export async function POST(req) {
   }
 
   try {
-    await connectDB();
-
     // Generate test Stripe client secret
     const clientSecret = `pi_test_${Date.now()}_${Math.random()
       .toString(36)

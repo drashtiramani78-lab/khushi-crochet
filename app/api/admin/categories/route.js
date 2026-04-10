@@ -3,8 +3,21 @@ import { connectDB } from "@/lib/mongodb";
 import Category from "@/models/category";
 import { sanitizeRequestBodyAuto, checkXSSThreats } from "@/lib/sanitization";
 
+import { cookies } from "next/headers";
+
+async function checkAdminAuth() {
+  const cookieStore = await cookies();
+  const adminAuth = cookieStore.get("admin_auth")?.value;
+  return adminAuth === "true";
+}
+
 export async function GET() {
   try {
+    const isAdmin = await checkAdminAuth();
+    if (!isAdmin) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
     const categories = await Category.find({}).sort({ createdAt: -1 });
     return NextResponse.json({
@@ -24,6 +37,11 @@ export async function GET() {
 
 export async function POST(req) {
   try {
+    const isAdmin = await checkAdminAuth();
+    if (!isAdmin) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
     let body = await req.json();
 

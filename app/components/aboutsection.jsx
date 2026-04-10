@@ -1,8 +1,9 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function AboutSection() {
   return (
-    <section className="about-section" id="about">
+    <section className="about-section" id="about-section">
       <div className="container">
         <div className="row align-items-center g-5">
           <div className="col-lg-6">
@@ -33,9 +34,9 @@ export default function AboutSection() {
                 designed with attention to detail and a love for handcrafted art.
               </p>
 
-              <a href="/products" className="about-btn">
+              <Link href="/products" className="about-btn">
                 Explore Collection
-              </a>
+              </Link>
             </div>
           </div>
         </div>

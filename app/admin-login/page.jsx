@@ -42,9 +42,20 @@ export default function AdminLoginPage() {
       // Refresh the auth context to pick up the new admin_auth cookie
       await refreshUser();
       
-      // Navigate to admin panel
-      router.push("/admin");
-      router.refresh();
+      // Small delay + direct admin auth check for reliable redirect
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      const adminRes = await fetch("/api/auth/admin", { 
+        credentials: "include", 
+        cache: "no-store" 
+      });
+      
+      if (adminRes.ok) {
+        router.push("/admin");
+        router.refresh();
+      } else {
+        throw new Error("Admin auth verification failed");
+      }
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {

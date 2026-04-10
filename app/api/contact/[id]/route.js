@@ -1,9 +1,21 @@
 import { connectDB } from "@/lib/mongodb";
 import Contact from "@/models/contact";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+
+async function checkAdminAuth() {
+  const cookieStore = await cookies();
+  const adminAuth = cookieStore.get("admin_auth")?.value;
+  return adminAuth === "true";
+}
 
 export async function PUT(req, { params }) {
   try {
+    const isAdmin = await checkAdminAuth();
+    if (!isAdmin) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
     const body = await req.json();
 
@@ -30,6 +42,11 @@ export async function PUT(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
+    const isAdmin = await checkAdminAuth();
+    if (!isAdmin) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
 
     const deletedMessage = await Contact.findByIdAndDelete(params.id);

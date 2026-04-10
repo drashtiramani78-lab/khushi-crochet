@@ -8,11 +8,15 @@ export const metadata = {
     "Khushi Crochet offers handmade crochet flowers, gifts, accessories, and custom creations crafted with love.",
 };
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body>
-        <LayoutWrapper>{children}</LayoutWrapper>
+        <ErrorBoundary>
+          <LayoutWrapper>{children}</LayoutWrapper>
+        </ErrorBoundary>
       </body>
     </html>
   );

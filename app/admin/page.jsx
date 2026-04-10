@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useAdminAuth } from "@/app/hooks/useAdminAuth";
 import "../admin-styles.css";
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const { authLoading, isAuthorized, logout } = useAdminAuth();
   const [products, setProducts] = useState([]);
   const [customOrders, setCustomOrders] = useState([]);

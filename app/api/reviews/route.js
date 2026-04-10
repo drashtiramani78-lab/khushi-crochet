@@ -6,8 +6,6 @@ import { jwtVerify } from 'jose';
 import { getJoseSecret } from '@/lib/auth';
 import { sanitizeRequestBodyAuto, checkXSSThreats } from '@/lib/sanitization';
 
-const secret = getJoseSecret();
-
 export async function GET(req) {
   try {
     await connectDB();
@@ -46,7 +44,7 @@ export async function POST(req) {
       );
     }
     
-    const verified = await jwtVerify(token, secret);
+    const verified = await jwtVerify(token, getJoseSecret());
     const userId = verified.payload.userId;
     
     let body = await req.json();

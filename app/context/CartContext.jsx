@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 const CartContext = createContext();
 
@@ -8,30 +8,42 @@ export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load cart from localStorage on mount
+  // Load cart from localStorage on mount only
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedCart = localStorage.getItem("cart");
-      if (savedCart) {
-        try {
-          setCart(JSON.parse(savedCart));
-        } catch (e) {
-          console.error("Failed to load cart:", e);
-          setCart([]);
-        }
+    const loadCart = async () => {
+      if (typeof window === "undefined") {
+        setIsLoading(false);
+        return;
       }
-    }
-    setIsLoading(false);
+
+      try {
+        const savedCart = localStorage.getItem("cart");
+        if (savedCart) {
+          const parsedCart = JSON.parse(savedCart);
+          setCart(Array.isArray(parsedCart) ? parsedCart : []);
+        }
+      } catch (e) {
+        console.error("Failed to load cart:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCart();
   }, []);
 
-  // Save cart to localStorage whenever it changes
+  // Save cart to localStorage - separate effect
   useEffect(() => {
-    if (!isLoading && typeof window !== "undefined") {
+    if (isLoading || typeof window === "undefined") return;
+    
+    try {
       localStorage.setItem("cart", JSON.stringify(cart));
+    } catch (e) {
+      console.error("Failed to save cart:", e);
     }
-  }, [cart, isLoading]);
+  }, [cart]);
 
-  const addToCart = (product, quantity = 1) => {
+  const addToCart = useCallback((product, quantity = 1) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item._id === product._id);
 
@@ -55,13 +67,13 @@ export function CartProvider({ children }) {
         },
       ];
     });
-  };
+  }, []);
 
-  const removeFromCart = (productId) => {
+  const removeFromCart = useCallback((productId) => {
     setCart((prevCart) => prevCart.filter((item) => item._id !== productId));
-  };
+  }, []);
 
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = useCallback((productId, quantity) => {
     if (quantity <= 0) {
       removeFromCart(productId);
     } else {
@@ -71,24 +83,24 @@ export function CartProvider({ children }) {
         )
       );
     }
-  };
+  }, []);
 
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCart([]);
-  };
+  }, []);
 
-  const getCartTotal = () => {
+  const getCartTotal = useCallback(() => {
     return cart.reduce((total, item) => {
       const price = typeof item.price === "string" 
         ? parseFloat(item.price.replace(/[^\d.]/g, ""))
-        : item.price;
-      return total + (price * item.quantity);
+        : Number(item.price) || 0;
+      return total + (price * (item.quantity || 0));
     }, 0);
-  };
+  }, [cart]);
 
-  const getCartCount = () => {
-    return cart.reduce((count, item) => count + item.quantity, 0);
-  };
+  const getCartCount = useCallback(() => {
+    return cart.reduce((count, item) => count + (item.quantity || 0), 0);
+  }, [cart]);
 
   return (
     <CartContext.Provider

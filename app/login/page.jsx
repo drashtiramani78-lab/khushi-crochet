@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/app/context/AuthContext";
+import "@/app/styles/login.css";
 
 function LoginContent() {
   const router = useRouter();
@@ -58,21 +59,21 @@ function LoginContent() {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Welcome Back</h1>
-        <p style={styles.subtitle}>Login to continue</p>
+    <div className="login-page">
+      <div className="login-card">
+        <h1 className="login-title">Welcome Back</h1>
+        <p className="login-subtitle">Login to continue</p>
 
-        {message ? <p style={styles.error}>{message}</p> : null}
+        {message && <div className="login-message error">{message}</div>}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form onSubmit={handleSubmit} className="login-form">
           <input
             type="email"
             name="email"
             placeholder="Email Address"
             value={form.email}
             onChange={handleChange}
-            style={styles.input}
+            className="login-input"
             required
           />
 
@@ -82,17 +83,28 @@ function LoginContent() {
             placeholder="Password"
             value={form.password}
             onChange={handleChange}
-            style={styles.input}
+            className="login-input"
             required
           />
 
-          <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
+          <button 
+            type="submit" 
+            className="login-submit" 
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="login-loading"></span>
+                Logging in...
+              </>
+            ) : (
+              "Login"
+            )}
           </button>
         </form>
 
-        <p style={styles.linkText}>
-          Don&apos;t have an account? <Link href="/register">Register</Link>
+        <p className="login-link-section">
+          Don't have an account? <Link href="/register" className="login-link">Register</Link>
         </p>
       </div>
     </div>
@@ -101,66 +113,8 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center"}}>Loading...</div>}>
+    <Suspense fallback={<div className="login-page"><div className="login-card"><div>Loading...</div></div></div>}>
       <LoginContent />
     </Suspense>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "#f8f5f0",
-    padding: "20px",
-  },
-  card: {
-    width: "100%",
-    maxWidth: "420px",
-    background: "#fff",
-    padding: "30px",
-    borderRadius: "16px",
-    boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
-  },
-  title: {
-    fontSize: "30px",
-    marginBottom: "10px",
-    textAlign: "center",
-  },
-  subtitle: {
-    textAlign: "center",
-    color: "#777",
-    marginBottom: "20px",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "14px",
-  },
-  input: {
-    padding: "14px",
-    borderRadius: "10px",
-    border: "1px solid #ddd",
-    fontSize: "15px",
-  },
-  button: {
-    padding: "14px",
-    border: "none",
-    borderRadius: "10px",
-    background: "#b08d57",
-    color: "#fff",
-    fontSize: "16px",
-    cursor: "pointer",
-  },
-  error: {
-    color: "red",
-    textAlign: "center",
-    marginBottom: "10px",
-  },
-  linkText: {
-    textAlign: "center",
-    marginTop: "18px",
-  },
-};

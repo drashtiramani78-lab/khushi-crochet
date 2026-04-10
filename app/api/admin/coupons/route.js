@@ -1,25 +1,20 @@
 import { connectDB } from '@/lib/mongodb';
 import Coupon from '@/models/coupon';
-import { jwtVerify } from 'jose';
-import { getJoseSecret } from '@/lib/auth';
+import { cookies } from "next/headers";
 import { sanitizeRequestBodyAuto, checkXSSThreats } from '@/lib/sanitization';
 
-async function verifyAdmin(req) {
-  const token = req.headers.get('authorization')?.split(' ')[1];
-  if (!token) throw new Error('Not authenticated');
-  
-  const verified = await jwtVerify(token, getJoseSecret());
-  if (verified.payload.role !== 'admin') {
-    throw new Error('Not authorized');
+async function verifyAdmin() {
+  const cookieStore = await cookies();
+  const adminAuth = cookieStore.get("admin_auth")?.value;
+  if (adminAuth !== "true") {
+    throw new Error("Not authorized");
   }
-  
-  return verified.payload;
 }
 
 export async function GET(req) {
   try {
     await connectDB();
-    await verifyAdmin(req);
+    await verifyAdmin();
     
     const coupons = await Coupon.find().sort({ createdAt: -1 });
     return Response.json({ success: true, data: coupons });
@@ -35,7 +30,7 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     await connectDB();
-    await verifyAdmin(req);
+    await verifyAdmin();
     
     let body = await req.json();
 

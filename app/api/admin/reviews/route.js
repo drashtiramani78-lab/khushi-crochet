@@ -1,31 +1,31 @@
 import { connectDB } from '@/lib/mongodb';
 import Review from '@/models/review';
 import Product from '@/models/product';
-import { jwtVerify } from 'jose';
-import { getJoseSecret } from '@/lib/auth';
+import { cookies } from "next/headers";
 import { sanitizeRequestBodyAuto, checkXSSThreats } from '@/lib/sanitization';
 
-async function verifyAdmin(req) {
-  const token = req.headers.get('authorization')?.split(' ')[1];
-  if (!token) throw new Error('Not authenticated');
-  
-  const verified = await jwtVerify(token, getJoseSecret());
-  if (verified.payload.role !== 'admin') {
-    throw new Error('Not authorized');
+async function verifyAdmin() {
+  const cookieStore = await cookies();
+  const adminAuth = cookieStore.get("admin_auth")?.value;
+  if (adminAuth !== "true") {
+    throw new Error("Not authorized");
   }
-  
-  return verified.payload;
 }
 
 export async function GET(req) {
   try {
     await connectDB();
-    await verifyAdmin(req);
+    await verifyAdmin();
     
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status') || 'pending';
-    
-    const reviews = await Review.find({ status })
+    const status = (searchParams.get('status') || 'pending').toLowerCase();
+
+    const query = {};
+    if (status !== "all") {
+      query.status = status;
+    }
+
+    const reviews = await Review.find(query)
       .sort({ createdAt: -1 })
       .limit(50);
     
@@ -42,7 +42,7 @@ export async function GET(req) {
 export async function PUT(req) {
   try {
     await connectDB();
-    await verifyAdmin(req);
+    await verifyAdmin();
     
     const { searchParams } = new URL(req.url);
     const reviewId = searchParams.get('id');
@@ -110,7 +110,7 @@ export async function PUT(req) {
 export async function DELETE(req) {
   try {
     await connectDB();
-    await verifyAdmin(req);
+    await verifyAdmin();
     
     const { searchParams } = new URL(req.url);
     const reviewId = searchParams.get('id');

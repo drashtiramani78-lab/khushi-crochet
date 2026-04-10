@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+export const dynamic = 'force-dynamic';
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/user";
+
+export const revalidate = 300;
 
 export async function GET() {
   try {

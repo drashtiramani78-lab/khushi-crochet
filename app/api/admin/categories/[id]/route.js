@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Category from "@/models/category";
+import { cookies } from "next/headers";
+
+async function checkAdminAuth() {
+  const cookieStore = await cookies();
+  const adminAuth = cookieStore.get("admin_auth")?.value;
+  return adminAuth === "true";
+}
 
 export async function GET(req, { params }) {
   try {
@@ -32,6 +39,11 @@ export async function GET(req, { params }) {
 
 export async function PUT(req, { params }) {
   try {
+    const isAdmin = await checkAdminAuth();
+    if (!isAdmin) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
     const { id } = params;
     const body = await req.json();
@@ -73,6 +85,11 @@ export async function PUT(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
+    const isAdmin = await checkAdminAuth();
+    if (!isAdmin) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     await connectDB();
     const { id } = params;
 

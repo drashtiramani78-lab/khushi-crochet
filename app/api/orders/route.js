@@ -45,6 +45,26 @@ const validateOrderData = (body) => {
     errors.push("Invalid total amount");
   }
 
+  // Enum validations matching schema
+  const validPaymentMethods = ['COD', 'RAZORPAY', 'STRIPE', 'UPI_QR'];
+  const validPaymentStatuses = ['Pending', 'Paid', 'Failed', 'Refunded', 'Pending_Verification'];
+  const validOrderStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Refunded'];
+
+  const pm = (body.paymentMethod || 'COD').toUpperCase();
+  if (!validPaymentMethods.includes(pm)) {
+    errors.push(`Invalid paymentMethod: ${pm}. Must be one of ${validPaymentMethods.join(', ')}`);
+  }
+
+  const ps = (body.paymentStatus || 'Pending').charAt(0).toUpperCase() + (body.paymentStatus || 'Pending').slice(1).toLowerCase();
+  if (!validPaymentStatuses.includes(ps)) {
+    errors.push(`Invalid paymentStatus: ${ps}. Must be one of ${validPaymentStatuses.join(', ')}`);
+  }
+
+  const os = (body.orderStatus || 'Pending').charAt(0).toUpperCase() + (body.orderStatus || 'Pending').slice(1).toLowerCase();
+  if (!validOrderStatuses.includes(os)) {
+    errors.push(`Invalid orderStatus: ${os}. Must be one of ${validOrderStatuses.join(', ')}`);
+  }
+
   return {
     isValid: errors.length === 0,
     errors
@@ -128,20 +148,39 @@ export async function POST(req) {
       );
     }
 
+    // Normalize enum values to match schema
+    const normalizedPaymentMethod = (body.paymentMethod || 'COD').toUpperCase();
+    const normalizedPaymentStatus = body.paymentMethod?.toUpperCase() === 'COD' 
+      ? 'Pending' 
+      : ((body.paymentStatus || 'pending').charAt(0).toUpperCase() + (body.paymentStatus || 'pending').slice(1).toLowerCase());
+    const normalizedOrderStatus = (body.orderStatus || 'pending').charAt(0).toUpperCase() + (body.orderStatus || 'pending').slice(1).toLowerCase();
+
     const newOrder = await Order.create({
       userId: authUser._id,
       customerName: body.customerName.trim(),
       email: body.email.trim(),
       phone: body.phone.trim(),
       address: body.address.trim(),
+      city: body.city?.trim() || '',
+      state: body.state?.trim() || '',
+      pincode: body.pincode?.trim() || '',
+      country: body.country || 'India',
       items: Array.isArray(body.items) ? body.items : [],
+      subtotal: Number(body.subtotal) || 0,
+      shippingCost: Number(body.shippingCost) || 0,
+      couponCode: body.couponCode || '',
+      discountAmount: Number(body.discount) || 0,
       totalAmount: Number(body.totalAmount) || 0,
-      paymentMethod: body.paymentMethod || "COD",
-      paymentStatus: body.paymentMethod === "COD" ? "Pending" : (body.paymentStatus || "Pending"),
-      orderStatus: body.orderStatus || "Pending",
+      paymentMethod: normalizedPaymentMethod,
+      paymentStatus: normalizedPaymentStatus,
+      orderStatus: normalizedOrderStatus,
       razorpayPaymentId: body.razorpayPaymentId || null,
+      transactionId: body.transactionId || null,
+      upiId: body.upiId || null,
+      notes: body.notes || '',
       trackingId: generateTrackingId(),
     });
+
 
     // Send order confirmations (email, SMS, WhatsApp)
     const user = {
@@ -163,6 +202,20 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error("POST /api/orders error:", error);
+    
+    // Handle Mongoose validation errors specifically
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Validation failed', 
+          errors: validationErrors 
+        },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { success: false, message: error.message || "Failed to create order" },
       { status: 500 }
