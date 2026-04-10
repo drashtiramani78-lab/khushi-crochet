@@ -39,12 +39,21 @@ function LoginContent() {
         },
         body: JSON.stringify(form),
       });
-
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") || "";
+      const raw = await res.text();
+      const data =
+        contentType.includes("application/json") && raw
+          ? JSON.parse(raw)
+          : null;
 
       if (!res.ok) {
-        setMessage(data.message || "Login failed");
+        setMessage(data?.message || `Login failed (${res.status})`);
         setLoading(false);
+        return;
+      }
+
+      if (!data?.user) {
+        setMessage("Login failed: invalid server response");
         return;
       }
 
@@ -52,7 +61,7 @@ function LoginContent() {
       router.push(redirect);
     } catch (error) {
       console.error(error);
-      setMessage("Something went wrong");
+      setMessage(error?.message || "Something went wrong");
     } finally {
       setLoading(false);
     }

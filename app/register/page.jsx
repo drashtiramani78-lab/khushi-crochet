@@ -39,10 +39,15 @@ function RegisterContent() {
         body: JSON.stringify(form),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") || "";
+      const raw = await res.text();
+      const data =
+        contentType.includes("application/json") && raw
+          ? JSON.parse(raw)
+          : null;
 
       if (!res.ok) {
-        setMessage(data.message || "Registration failed");
+        setMessage(data?.message || `Registration failed (${res.status})`);
         return;
       }
 
@@ -50,7 +55,7 @@ function RegisterContent() {
       router.push("/login");
     } catch (error) {
       console.error("Registration error:", error);
-      setMessage("Something went wrong. Please try again.");
+      setMessage(error?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
