@@ -9,7 +9,7 @@ import "@/app/styles/login.css";
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+const redirect = searchParams.get("redirect") || "/customorder";
   const { setUser } = useAuth();
 
   const [form, setForm] = useState({

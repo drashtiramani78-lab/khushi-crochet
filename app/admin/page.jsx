@@ -203,6 +203,10 @@ export default function AdminDashboard() {
             <span className="admin-sidebar-icon">🧵</span>
             Products
           </Link>
+<Link href="/admin/coupons" className="admin-sidebar-link">
+            <span className="admin-sidebar-icon">🎟️</span>
+            Coupons
+          </Link>
           <Link href="/admin/custom" className="admin-sidebar-link">
             <span className="admin-sidebar-icon">✂️</span>
             Custom Orders

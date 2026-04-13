@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
-  const { amount, currency, orderId } = await req.json();
+  const body = await req.json();
+  const {
+    amount,
+    currency = 'USD',
+    orderId,
+  } = body;
 
   if (!amount || !orderId) {
     return NextResponse.json(
-      { success: false, message: "Missing required fields" },
+      { success: false, message: "Missing required fields: amount, orderId" },
       { status: 400 }
     );
   }

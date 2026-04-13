@@ -8,6 +8,7 @@ import { useCart } from "@/app/context/CartContext";
 import { useAuth } from "@/app/context/AuthContext";
 import Link from "next/link";
 import CouponInput from "../components/CouponInput";
+import UpiScanner from "../components/UpiScanner";
 
 
 function CheckoutContent() {
@@ -26,6 +27,8 @@ function CheckoutContent() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [copied, setCopied] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState({ couponCode: '', discount: 0, finalTotal: 0 });
+  const [upiQr, setUpiQr] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -38,11 +41,28 @@ function CheckoutContent() {
     transactionId: "",
   });
 
+  const UPI_ID = "drashtiramani78@okhdfcbank";
 
-  // =========================
-  // CHANGE THESE 2 VALUES
-  // =========================
-  const UPI_ID = "drashtiramani78@okhdfcbank"; // example: khushicrochet@okaxis
+  const generateUpiQr = async () => {
+    if (!totalAmount) return;
+    setQrLoading(true);
+    try {
+      const tempOrderId = `preview_${Date.now()}`;
+      const res = await fetch('/api/payments/upi-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: totalAmount, orderId: tempOrderId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUpiQr(data.data);
+      }
+    } catch (error) {
+      console.error('QR gen error:', error);
+    } finally {
+      setQrLoading(false);
+    }
+  };
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -529,13 +549,41 @@ function CheckoutContent() {
                 <h3 style={styles.upiTitle}>Scan & Pay</h3>
 
                 <div style={styles.qrWrapper}>
-                  <Image
-                    src={"/upi-qr.png"}
-                    alt="UPI QR Code"
-                    width={220}
-                    height={220}
-                    style={styles.qrImage}
-                  />
+                  {upiQr ? (
+                    <div 
+                      dangerouslySetInnerHTML={{ __html: upiQr.qrSvg }} 
+                      style={{ ...styles.qrImage, width: '220px', height: '220px' }}
+                    />
+                  ) : qrLoading ? (
+                    <div style={{ width: '220px', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f5f0', borderRadius: '12px', border: '1px solid #ddd3c7' }}>
+                      Generating QR...
+                    </div>
+                  ) : (
+                    <Image
+                      src={"/upi-qr.png"}
+                      alt="UPI QR Code"
+                      width={220}
+                      height={220}
+                      style={styles.qrImage}
+                    />
+                  )}
+                  {!upiQr && !qrLoading && (
+                    <button 
+                      onClick={generateUpiQr}
+                      style={{
+                        marginTop: '8px',
+                        padding: '8px 16px',
+                        background: '#b59a7a',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontSize: '13px'
+                      }}
+                    >
+                      Generate Dynamic QR for ₹{totalAmount.toFixed(2)}
+                    </button>
+                  )}
                 </div>
 
                 <p style={styles.upiText}>
@@ -577,9 +625,16 @@ function CheckoutContent() {
                   {formErrors.transactionId && (
                     <span style={styles.error}>{formErrors.transactionId}</span>
                   )}
+                  <UpiScanner 
+                    onScan={(decodedText) => {
+                      setForm({ ...form, transactionId: decodedText });
+                    }} 
+                    totalAmount={totalAmount} 
+                  />
                 </div>
               </div>
             )}
+            <import UpiScanner from "../components/UpiScanner"; from "@/app/components/UpiScanner"; 
           </div>
 
           <div style={styles.right}>

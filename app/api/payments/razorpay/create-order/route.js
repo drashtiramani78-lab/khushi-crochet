@@ -3,15 +3,16 @@ import { connectDB } from "@/lib/mongodb";
 import Order from "@/models/order";
 
 export async function POST(req) {
+  const body = await req.json();
   const {
     amount,
-    currency,
+    currency = 'INR',
     orderId,
-  } = await req.json();
+  } = body;
 
   if (!amount || !orderId) {
     return NextResponse.json(
-      { success: false, message: "Missing required fields" },
+      { success: false, message: "Missing required fields: amount, orderId" },
       { status: 400 }
     );
   }

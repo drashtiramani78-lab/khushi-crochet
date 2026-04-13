@@ -45,24 +45,20 @@ const validateOrderData = (body) => {
     errors.push("Invalid total amount");
   }
 
-  // Enum validations matching schema
+  // Validate EXACT schema enum values (already normalized)
   const validPaymentMethods = ['COD', 'RAZORPAY', 'STRIPE', 'UPI_QR'];
+  if (!validPaymentMethods.includes(body.paymentMethod)) {
+    errors.push(`Invalid paymentMethod: ${body.paymentMethod}. Must be one of ${validPaymentMethods.join(', ')}`);
+  }
+
   const validPaymentStatuses = ['Pending', 'Paid', 'Failed', 'Refunded', 'Pending_Verification'];
+  if (!validPaymentStatuses.includes(body.paymentStatus)) {
+    errors.push(`Invalid paymentStatus: ${body.paymentStatus}. Must be one of ${validPaymentStatuses.join(', ')}`);
+  }
+
   const validOrderStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Refunded'];
-
-  const pm = (body.paymentMethod || 'COD').toUpperCase();
-  if (!validPaymentMethods.includes(pm)) {
-    errors.push(`Invalid paymentMethod: ${pm}. Must be one of ${validPaymentMethods.join(', ')}`);
-  }
-
-  const ps = (body.paymentStatus || 'Pending').charAt(0).toUpperCase() + (body.paymentStatus || 'Pending').slice(1).toLowerCase();
-  if (!validPaymentStatuses.includes(ps)) {
-    errors.push(`Invalid paymentStatus: ${ps}. Must be one of ${validPaymentStatuses.join(', ')}`);
-  }
-
-  const os = (body.orderStatus || 'Pending').charAt(0).toUpperCase() + (body.orderStatus || 'Pending').slice(1).toLowerCase();
-  if (!validOrderStatuses.includes(os)) {
-    errors.push(`Invalid orderStatus: ${os}. Must be one of ${validOrderStatuses.join(', ')}`);
+  if (!validOrderStatuses.includes(body.orderStatus)) {
+    errors.push(`Invalid orderStatus: ${body.orderStatus}. Must be one of ${validOrderStatuses.join(', ')}`);
   }
 
   return {
@@ -135,8 +131,20 @@ export async function POST(req) {
     body.email = sanitizeEmail(body.email);
     body.phone = sanitizePhone(body.phone);
 
-    // Validate order data
-    const validation = validateOrderData(body);
+    // Normalize enum values FIRST to match schema
+    const normalizedPaymentMethod = (body.paymentMethod || 'COD').toUpperCase();
+    const normalizedPaymentStatus = normalizedPaymentMethod === 'COD' 
+      ? 'Pending' 
+      : ((body.paymentStatus || 'pending').charAt(0).toUpperCase() + (body.paymentStatus || 'pending').slice(1).toLowerCase());
+    const normalizedOrderStatus = (body.orderStatus || 'pending').charAt(0).toUpperCase() + (body.orderStatus || 'pending').slice(1).toLowerCase();
+
+    // NOW validate normalized data
+    const validation = validateOrderData({
+      ...body,
+      paymentMethod: normalizedPaymentMethod,
+      paymentStatus: normalizedPaymentStatus,
+      orderStatus: normalizedOrderStatus
+    });
     if (!validation.isValid) {
       return NextResponse.json(
         { 
@@ -147,13 +155,6 @@ export async function POST(req) {
         { status: 400 }
       );
     }
-
-    // Normalize enum values to match schema
-    const normalizedPaymentMethod = (body.paymentMethod || 'COD').toUpperCase();
-    const normalizedPaymentStatus = body.paymentMethod?.toUpperCase() === 'COD' 
-      ? 'Pending' 
-      : ((body.paymentStatus || 'pending').charAt(0).toUpperCase() + (body.paymentStatus || 'pending').slice(1).toLowerCase());
-    const normalizedOrderStatus = (body.orderStatus || 'pending').charAt(0).toUpperCase() + (body.orderStatus || 'pending').slice(1).toLowerCase();
 
     const newOrder = await Order.create({
       userId: authUser._id,
