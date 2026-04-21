@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
+import { useCart } from '@/app/context/CartContext';
 import Link from 'next/link';
 import styles from '@/app/styles/wishlist.module.css';
 
@@ -22,10 +23,14 @@ export default function WishlistPage() {
     }
   }, [authLoading, user, router]);
 
+  const { addToCart: addToCartContext } = useCart();
+
   const fetchWishlist = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/wishlist');
+      const res = await fetch('/api/wishlist', {
+        credentials: 'include'
+      });
       if (res.ok) {
         const data = await res.json();
         setItems(data.data || []);
@@ -44,6 +49,7 @@ export default function WishlistPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ productId }),
       });
 
@@ -56,22 +62,14 @@ export default function WishlistPage() {
   };
 
   const addToCart = async (product) => {
-    // This would be handled by your cart context
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const existingItem = cart.find(item => item._id === product.productId);
-    
-    if (existingItem) {
-      existingItem.quantity += 1;
-    } else {
-      cart.push({
-        _id: product.productId,
-        name: product.productName,
-        price: product.productPrice,
-        quantity: 1,
-      });
-    }
-    
-    localStorage.setItem('cart', JSON.stringify(cart));
+    const cartItem = {
+      _id: product.productId,
+      name: product.productName,
+      price: product.productPrice,
+      image: product.productImage,
+      quantity: 1,
+    };
+    addToCartContext(cartItem);
     alert('Added to cart!');
   };
 

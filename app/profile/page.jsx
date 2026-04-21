@@ -16,7 +16,7 @@ export default function Profile() {
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
-        router.push("/login?redirect=/account-settings");
+        router.push("/login?redirect=/");
       } else {
         fetchOrders();
       }

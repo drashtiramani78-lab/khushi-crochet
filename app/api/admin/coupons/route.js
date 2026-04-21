@@ -49,7 +49,57 @@ export async function POST(req) {
     await connectDB();
 
     const body = await req.json();
-    const coupon = new Coupon(body);
+    
+    // Validate and sanitize input
+    const validFromStr = body.validFrom;
+    const validTillStr = body.validTill;
+    const validFrom = new Date(`${validFromStr}T00:00:00Z`);
+    const validTill = new Date(`${validTillStr}T00:00:00Z`);
+    
+    if (isNaN(validFrom) || isNaN(validTill)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid date format" },
+        { status: 400 }
+      );
+    }
+    
+    if (validTill <= validFrom) {
+      return NextResponse.json(
+        { success: false, error: "Valid till date must be after valid from date" },
+        { status: 400 }
+      );
+    }
+    
+    if (!body.code?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "Coupon code is required" },
+        { status: 400 }
+      );
+    }
+    
+    // Check duplicate code
+    const existing = await Coupon.findOne({ code: body.code.toUpperCase().trim() });
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: "Coupon code already exists" },
+        { status: 409 }
+      );
+    }
+    
+    const couponData = {
+      ...body,
+      code: body.code.toUpperCase().trim(),
+      validFrom,
+      validTill,
+      discountValue: parseFloat(body.discountValue) || 0,
+      minOrderAmount: parseFloat(body.minOrderAmount) || 0,
+      maxDiscount: body.maxDiscount ? parseFloat(body.maxDiscount) : null,
+      usageLimit: body.usageLimit ? parseInt(body.usageLimit) : null,
+      perUserLimit: parseInt(body.perUserLimit) || 1,
+      isActive: Boolean(body.isActive)
+    };
+    
+    const coupon = new Coupon(couponData);
     await coupon.save();
 
     return NextResponse.json({
@@ -58,8 +108,18 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error('Error creating coupon:', error);
+    
+    // Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(e => e.message);
+      return NextResponse.json(
+        { success: false, error: `Validation failed: ${errors.join(', ')}` },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error.message || 'Failed to create coupon' },
       { status: 400 }
     );
   }

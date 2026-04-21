@@ -6,6 +6,7 @@ import Navbar from "./components/navbar";
 import Footer from "./components/footer";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
+import { ToastProvider } from "./components/ToastProvider";
 
 export function LayoutWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -14,9 +15,11 @@ export function LayoutWrapper({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <CartProvider>
-        {!isAdminRoute && <Navbar />}
-        {children}
-        {!isAdminRoute && <Footer />}
+        <ToastProvider>
+          {!isAdminRoute && <Navbar />}
+          {children}
+          {!isAdminRoute && <Footer />}
+        </ToastProvider>
       </CartProvider>
     </AuthProvider>
   );

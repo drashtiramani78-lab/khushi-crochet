@@ -133,10 +133,13 @@ export default function ProductDetailPage() {
                 alt={product.name}
                 width={700}
                 height={800}
+                priority
+                loading="eager"
                 className="product-details-main-image"
                 unoptimized
                 onError={() => setImageError(true)}
               />
+
             ) : (
               <div className="product-details-image-placeholder">
                 <span>Image unavailable</span>

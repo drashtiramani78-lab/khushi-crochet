@@ -9,8 +9,8 @@ import "@/app/styles/login.css";
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-const redirect = searchParams.get("redirect") || "/customorder";
-  const { setUser } = useAuth();
+const redirect = searchParams.get("redirect") || "/";
+  const { setUser, refreshUser } = useAuth();
 
   const [form, setForm] = useState({
     email: "",
@@ -58,7 +58,8 @@ const redirect = searchParams.get("redirect") || "/customorder";
       }
 
       setUser(data.user);
-      router.push(redirect);
+      refreshUser();
+      router.push('/');
     } catch (error) {
       console.error(error);
       setMessage(error?.message || "Something went wrong");
@@ -113,7 +114,7 @@ const redirect = searchParams.get("redirect") || "/customorder";
         </form>
 
         <p className="login-link-section">
-          Don't have an account? <Link href="/register" className="login-link">Register</Link>
+          Don&apos;t have an account? <Link href="/register" className="login-link">Register</Link>
         </p>
       </div>
     </div>

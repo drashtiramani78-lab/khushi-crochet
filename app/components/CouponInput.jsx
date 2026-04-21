@@ -1,27 +1,40 @@
 "use client";
 
 import { useState } from 'react';
+import { useAuth } from '@/app/context/AuthContext';
 
 export default function CouponInput({ cartTotal, onCouponApply, className = '' }) {
+  const { isAuthenticated } = useAuth();
   const [couponCode, setCouponCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState({ couponCode: '', discount: 0 });
 
-  const applyCoupon = async () => {
-    if (!couponCode.trim()) {
-      setError('Please enter a coupon code');
-      return;
-    }
+    const applyCoupon = async () => {
+      if (!couponCode.trim()) {
+        setError('Please enter a coupon code');
+        return;
+      }
+
+      if (!isAuthenticated) {
+        setError('Please login to apply coupons');
+        return;
+      }
 
     setLoading(true);
     setError('');
     setSuccess(false);
 
     try {
+      // Auth handled server-side via httpOnly cookie
+
       const res = await fetch(`/api/coupons`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
         body: JSON.stringify({
           code: couponCode.trim().toUpperCase(),
           cartTotal: cartTotal,
@@ -32,11 +45,13 @@ export default function CouponInput({ cartTotal, onCouponApply, className = '' }
 
       if (res.ok && data.success) {
         setSuccess(true);
-        onCouponApply({
+        const couponData = {
           couponCode: data.data.couponCode,
           discount: data.data.discount,
           finalTotal: data.data.finalTotal
-        });
+        };
+        setAppliedCoupon(couponData);
+        onCouponApply(couponData);
       } else {
         setError(data.error || 'Invalid coupon code');
       }
@@ -52,13 +67,14 @@ export default function CouponInput({ cartTotal, onCouponApply, className = '' }
     setCouponCode('');
     setError('');
     setSuccess(false);
+    setAppliedCoupon({ couponCode: '', discount: 0 });
     onCouponApply({ couponCode: '', discount: 0, finalTotal: cartTotal });
   };
 
   return (
     <div className={`coupon-section ${className}`}>
-      <h3 className="checkout-section-title" style={{ marginBottom: '16px', fontSize: '18px' }}>
-        Have a Coupon? <span style={{ color: '#b59a7a' }}>Save More!</span>
+      <h3 className="checkout-section-title">
+        Have a Coupon? <span className="text-checkout-accent">Save More!</span>
       </h3>
       
       <div className="coupon-input-group">
@@ -93,4 +109,3 @@ export default function CouponInput({ cartTotal, onCouponApply, className = '' }
     </div>
   );
 }
-

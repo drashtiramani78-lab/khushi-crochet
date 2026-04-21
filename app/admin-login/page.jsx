@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 
 export default function AdminLoginPage() {
-  const [password, setPassword] = useState("");
+const [username, setUsername] = useState("admin");
+  const [password, setPassword] = useState(""); 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function AdminLoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const text = await res.text();
@@ -80,6 +81,13 @@ export default function AdminLoginPage() {
         <p style={{ ...styles.subtitle, color: "var(--admin-text-secondary, #6e6259)" }}>Enter password to access admin panel</p>
 
         <form onSubmit={handleLogin}>
+        <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            style={{ ...styles.input, borderColor: "var(--admin-border, #d8ccc0)" }}
+          />
           <input
             type="password"
             placeholder="Enter admin password"

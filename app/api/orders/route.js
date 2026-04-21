@@ -1,4 +1,5 @@
 import { connectDB } from "@/lib/mongodb";
+import mongoose from 'mongoose';
 import Order from "@/models/order";
 import { NextResponse } from "next/server";
 import { sendOrderConfirmation } from "@/lib/notifications";
@@ -113,6 +114,22 @@ export async function POST(req) {
 
     let body = await req.json();
 
+    // Validate phone early
+    if (body.phone) {
+      const cleanPhone = body.phone.replace(/\D/g, '');
+      if (cleanPhone.length !== 10) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: "Phone must be exactly 10 digits",
+            errors: ["Phone must be exactly 10 digits"]
+          },
+          { status: 400 }
+        );
+      }
+      body.phone = cleanPhone;
+    }
+
     // Check for XSS threats and log them
     const xssCheck = checkXSSThreats(body);
     if (xssCheck.hasThreat) {
@@ -131,12 +148,10 @@ export async function POST(req) {
     body.email = sanitizeEmail(body.email);
     body.phone = sanitizePhone(body.phone);
 
-    // Normalize enum values FIRST to match schema
+    // Normalize enum values FIRST to match schema exactly
     const normalizedPaymentMethod = (body.paymentMethod || 'COD').toUpperCase();
-    const normalizedPaymentStatus = normalizedPaymentMethod === 'COD' 
-      ? 'Pending' 
-      : ((body.paymentStatus || 'pending').charAt(0).toUpperCase() + (body.paymentStatus || 'pending').slice(1).toLowerCase());
-    const normalizedOrderStatus = (body.orderStatus || 'pending').charAt(0).toUpperCase() + (body.orderStatus || 'pending').slice(1).toLowerCase();
+    const normalizedPaymentStatus = normalizedPaymentMethod === 'COD' ? 'Pending' : 'Pending_Verification';
+    const normalizedOrderStatus = 'Pending';
 
     // NOW validate normalized data
     const validation = validateOrderData({
@@ -146,11 +161,38 @@ export async function POST(req) {
       orderStatus: normalizedOrderStatus
     });
     if (!validation.isValid) {
+      console.error('Pre-Mongoose validation failed:', validation.errors);
       return NextResponse.json(
         { 
           success: false, 
-          message: "Validation failed",
+          message: "Invalid order details",
           errors: validation.errors
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate all product IDs are valid ObjectIds
+    if (!Array.isArray(body.items) || body.items.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'Order must contain at least one item' },
+        { status: 400 }
+      );
+    }
+    
+    const invalidItems = [];
+    for (const [index, item] of body.items.entries()) {
+      if (!item.productId || !mongoose.Types.ObjectId.isValid(item.productId)) {
+        console.error(`Invalid productId at cart item ${index}:`, item.productId, 'Full item:', item);
+        invalidItems.push({ index, productId: item.productId, name: item.name });
+      }
+    }
+    if (invalidItems.length > 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: `Invalid product ID(s) in ${invalidItems.length} cart item(s)`,
+          invalidItems 
         },
         { status: 400 }
       );
@@ -202,21 +244,24 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/orders error:", error);
+    console.error("POST /api/orders FULL ERROR:", error);
     
     // Handle Mongoose validation errors specifically
     if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map(err => err.message);
+      console.error('MONGOOSE VALIDATION DETAILS:', JSON.stringify(error.errors, null, 2));
+      const validationErrors = Object.values(error.errors).map(err => `${err.path}: ${err.message}`);
       return NextResponse.json(
         { 
           success: false, 
-          message: 'Validation failed', 
-          errors: validationErrors 
+          message: 'Invalid order data', 
+          errors: validationErrors,
+          fields: Object.keys(error.errors)
         },
         { status: 400 }
       );
     }
     
+    console.error('UNEXPECTED /api/orders ERROR:', error.message, error.stack);
     return NextResponse.json(
       { success: false, message: error.message || "Failed to create order" },
       { status: 500 }

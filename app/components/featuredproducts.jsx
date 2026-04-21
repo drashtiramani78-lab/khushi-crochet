@@ -89,6 +89,7 @@ export default function FeaturedProducts() {
                         className="product-image"
                         width={400}
                         height={300}
+                        priority={products.findIndex(p => p._id === product._id) < 4}
                         onError={() => handleImageError(product._id)}
                         style={{
                           objectFit: "cover",
@@ -96,6 +97,7 @@ export default function FeaturedProducts() {
                           height: "100%",
                         }}
                       />
+
                     ) : (
                       <div
                         className="product-image"

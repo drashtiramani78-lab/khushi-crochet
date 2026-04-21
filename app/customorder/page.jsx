@@ -23,7 +23,7 @@ export default function CustomOrdersPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push("/login?redirect=/customorder");
+      router.push("/login?redirect=/");
     }
   }, [user, authLoading, router]);
 
@@ -92,7 +92,7 @@ export default function CustomOrdersPage() {
       // Check for authentication error
       if (res.status === 401) {
         setMsg("❌ Please login to place a custom order");
-        router.push("/login?redirect=/customorder");
+        router.push("/login?redirect=/");
         return;
       }
 

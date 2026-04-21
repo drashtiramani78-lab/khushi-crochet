@@ -172,7 +172,7 @@ export default function ProductsPage() {
 
   const handleToggleWishlist = async (product) => {
     if (!user || authLoading) {
-      router.push("/login?redirect=/products");
+      router.push("/login?redirect=/");
       return;
     }
 

@@ -1,10 +1,21 @@
+export const dynamic = 'force-dynamic';
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from 'next/navigation';
 
 export default function OrderTrackPage() {
-  const [trackingId, setTrackingId] = useState("");
+  const searchParams = useSearchParams();
+  const [trackingId, setTrackingId] = useState(searchParams.get('id') || '');
   const [email, setEmail] = useState("");
+  
+  useEffect(() => {
+    const id = searchParams.get('id');
+    if (id) {
+      setTrackingId(id);
+    }
+  }, [searchParams]); 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
 

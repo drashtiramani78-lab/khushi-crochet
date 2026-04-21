@@ -142,10 +142,10 @@ export default function OrdersPage() {
                       </p>
                     </div>
                     <div
-                      className={`${styles.status} ${getStatusBadge(order.status)}`}
-                      style={{ backgroundColor: getStatusColor(order.status) }}
+                      className={`${styles.status} ${getStatusBadge(order.orderStatus)}`}
+                      style={{ backgroundColor: getStatusColor(order.orderStatus) }}
                     >
-                      {order.status}
+                      {order.orderStatus}
                     </div>
                   </div>
 
@@ -181,8 +181,8 @@ export default function OrdersPage() {
                       <div className={styles.detailRow}>
                         <span className={styles.label}>Delivery To:</span>
                         <span className={styles.value}>
-                          {order.shippingAddress?.address},
-                          {order.shippingAddress?.city}
+                          {order.address},
+                          {order.city}
                         </span>
                       </div>
                     </div>
@@ -226,9 +226,9 @@ export default function OrdersPage() {
                         {formatDate(order.createdAt)}
                       </p>
                     </div>
-                    <div
-                      className={`${styles.status} ${getStatusBadge(order.status)}`}
-                      style={{ backgroundColor: getStatusColor(order.status) }}
+                  <div
+                      className={`${styles.status} ${getStatusBadge(order.orderStatus)}`}
+                      style={{ backgroundColor: getStatusColor(order.orderStatus) }}
                     >
                       {order.status}
                     </div>

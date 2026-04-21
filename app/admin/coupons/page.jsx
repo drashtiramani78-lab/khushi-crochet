@@ -2,11 +2,12 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import "../admin-styles.css";
+import "../../admin-styles.css";
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [formData, setFormData] = useState({
     code: "",
@@ -22,6 +23,26 @@ export default function AdminCouponsPage() {
     isActive: true
   });
   const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // Sanitize formData to prevent null values in inputs
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      code: prev.code ?? '',
+      description: prev.description ?? '',
+      discountType: prev.discountType ?? 'percentage',
+      discountValue: prev.discountValue ?? '',
+      minOrderAmount: prev.minOrderAmount ?? '',
+      maxDiscount: prev.maxDiscount ?? '',
+      usageLimit: prev.usageLimit ?? '',
+      perUserLimit: prev.perUserLimit ?? 1,
+      validFrom: prev.validFrom ?? '',
+      validTill: prev.validTill ?? '',
+      isActive: prev.isActive ?? true,
+    }));
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -54,8 +75,49 @@ export default function AdminCouponsPage() {
     }
   };
 
+  const validateForm = () => {
+    if (!formData.code?.trim()) {
+      setError("Coupon code is required");
+      return false;
+    }
+    if (formData.code.length < 3) {
+      setError("Coupon code must be at least 3 characters");
+      return false;
+    }
+    if (!formData.validFrom || !formData.validTill) {
+      setError("Both dates are required");
+      return false;
+    }
+    const fromDate = new Date(formData.validFrom);
+    const tillDate = new Date(formData.validTill);
+    if (tillDate <= fromDate) {
+      setError("Valid till date must be after valid from");
+      return false;
+    }
+    if (!formData.discountValue || formData.discountValue <= 0) {
+      setError("Valid discount value required");
+      return false;
+    }
+    if (formData.discountType === 'percentage' && formData.discountValue > 100) {
+      setError("Percentage discount cannot exceed 100");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    
+    setError("");
+    setSuccess("");
+    setIsSubmitting(true);
+
+    if (!validateForm()) {
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const method = editingCoupon ? "PUT" : "POST";
       const url = editingCoupon 
@@ -66,29 +128,49 @@ export default function AdminCouponsPage() {
         method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...formData, validFrom: new Date(formData.validFrom), validTill: new Date(formData.validTill) }),
+        body: JSON.stringify({
+          ...formData,
+          discountValue: parseFloat(formData.discountValue) || 0,
+          minOrderAmount: formData.minOrderAmount ? parseFloat(formData.minOrderAmount) : 0,
+          maxDiscount: formData.maxDiscount ? parseFloat(formData.maxDiscount) : null,
+          usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : null,
+          perUserLimit: parseInt(formData.perUserLimit) || 1,
+          validFrom: formData.validFrom,
+          validTill: formData.validTill
+        }),
       });
 
-      if (res.ok) {
-        setShowForm(false);
-        setEditingCoupon(null);
-        setFormData({
-          code: "",
-          description: "",
-          discountType: "percentage",
-          discountValue: "",
-          minOrderAmount: "",
-          maxDiscount: "",
-          usageLimit: "",
-          perUserLimit: 1,
-          validFrom: "",
-          validTill: "",
-          isActive: true
-        });
-        fetchCoupons();
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setSuccess(editingCoupon ? "Coupon updated successfully!" : "Coupon created successfully!");
+        setTimeout(() => {
+          setSuccess("");
+          setShowForm(false);
+          setEditingCoupon(null);
+          setFormData({
+            code: "",
+            description: "",
+            discountType: "percentage",
+            discountValue: "",
+            minOrderAmount: "",
+            maxDiscount: "",
+            usageLimit: "",
+            perUserLimit: 1,
+            validFrom: "",
+            validTill: "",
+            isActive: true
+          });
+          fetchCoupons();
+        }, 2000);
+      } else {
+        setError(data.error || "Failed to save coupon");
       }
     } catch (error) {
       console.error("Coupon save error:", error);
+      setError("Network error. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -108,17 +190,17 @@ export default function AdminCouponsPage() {
   const editCoupon = (coupon) => {
     setEditingCoupon(coupon);
     setFormData({
-      code: coupon.code,
-      description: coupon.description || "",
-      discountType: coupon.discountType,
-      discountValue: coupon.discountValue,
-      minOrderAmount: coupon.minOrderAmount || "",
-      maxDiscount: coupon.maxDiscount || "",
-      usageLimit: coupon.usageLimit || "",
-      perUserLimit: coupon.perUserLimit || 1,
-      validFrom: new Date(coupon.validFrom).toISOString().split('T')[0],
-      validTill: new Date(coupon.validTill).toISOString().split('T')[0],
-      isActive: coupon.isActive
+      code: coupon.code ?? '',
+      description: coupon.description ?? '',
+      discountType: coupon.discountType ?? 'percentage',
+      discountValue: (coupon.discountValue ?? 0).toString(),
+      minOrderAmount: (coupon.minOrderAmount ?? 0).toString(),
+      maxDiscount: (coupon.maxDiscount ?? '').toString(),
+      usageLimit: (coupon.usageLimit ?? '').toString(),
+      perUserLimit: coupon.perUserLimit ?? 1,
+      validFrom: new Date(coupon.validFrom).toISOString().split('T')[0] ?? '',
+      validTill: new Date(coupon.validTill).toISOString().split('T')[0] ?? '',
+      isActive: !!coupon.isActive
     });
     setShowForm(true);
   };
@@ -237,17 +319,43 @@ export default function AdminCouponsPage() {
             </button>
           </div>
 
-          {showForm && (
+{showForm && (
             <form onSubmit={handleSubmit} className="admin-form">
+              {error && (
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid #ef4444',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  marginBottom: '16px',
+                  color: '#dc2626'
+                }}>
+                  ❌ {error}
+                </div>
+              )}
+              {success && (
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.1)',
+                  border: '1px solid #22c55e',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  marginBottom: '16px',
+                  color: '#166534'
+                }}>
+                  ✅ {success}
+                </div>
+              )}
               <div className="admin-form-grid">
                 <div>
                   <label>Code *</label>
                   <input
                     type="text"
                     value={formData.code}
-                    onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})}
+                    onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase().trim()})}
+                    maxLength={20}
                     required
                   />
+                  <small style={{color: 'var(--muted)', fontSize: '12px'}}>3-20 chars, auto uppercase</small>
                 </div>
                 <div>
                   <label>Description</label>
@@ -337,8 +445,16 @@ export default function AdminCouponsPage() {
                   />
                   Active
                 </label>
-                <button type="submit" className="admin-btn primary" style={{marginLeft: 'auto'}}>
-                  {editingCoupon ? "Update" : "Create"}
+                <button 
+                  type="submit" 
+                  className="admin-btn primary" 
+                  style={{marginLeft: 'auto'}}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting 
+                    ? (editingCoupon ? "Updating..." : "Creating...") 
+                    : (editingCoupon ? "Update" : "Create")
+                  }
                 </button>
                 <button 
                   type="button" 

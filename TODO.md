@@ -1,41 +1,28 @@
-# Task: Login redirect, Admin Coupons, GPay QR Scanner, Custom Order → Immediate Chat
+# Fix Date Validation Error in Admin Coupon Edit
 
-## Plan Breakdown (Approved ✅)
+## Task: Resolve 400 Bad Request on PUT /api/admin/coupons/[id] due to date validation
 
-**1. Login Redirect to Custom Order (Chat)**
-- [✅] Update `app/login/page.jsx`: Change default redirect "/" → "/customorder"
+**Status:** In Progress
 
-**2. Admin Coupon Management**
-- [✅] Create `app/api/admin/coupons/route.js` (CRUD: GET list, POST create, PUT/:id, DELETE/:id)
-- [✅] Create `app/api/admin/coupons/[id]/route.js` (PUT update, DELETE)
-- [✅] Create `app/admin/coupons/page.jsx` (UI: table list, create/edit forms)
-- [✅] Add sidebar link in admin pages
-- [✅] Test: Admin create/view/edit/delete coupons
+### Steps from Approved Plan:
+- [x] 1. Analyze files (frontend page.jsx, [id]/route.js, POST route.js, model) - Dates parsed as new Date(YYYY-MM-DD) creating UTC midnight, but DB dates may have timezone offset causing validator failure.
+- [ ] 2. Update TODO.md with checklist (current step)
+- [ ] 3. Edit app/api/admin/coupons/[id]/route.js:
+  |  - Normalize dates to UTC start-of-day: \`new Date(\`\${body.validFrom}T00:00:00Z\`) \`
+  |  - Enhance ValidationError handling for specific date errors
+  |  - Add console.log for parsed dates
+- [ ] 4. Verify consistency in POST endpoint (app/api/admin/coupons/route.js) - similar date handling already present
+- [ ] 5. Test:
+  |  - \`npm run dev\`
+  |  - Admin login, /admin/coupons
+  |  - Edit existing coupon (ID 69ddd9331784cbb6b48cad19), set dates e.g. validFrom '2024-12-20', validTill '2024-12-31'
+  |  - Verify no 400, check network/console
+- [ ] 6. Optional: Minor frontend improvements if needed
+- [ ] 7. Mark complete, attempt_completion
 
-**3. GPay Auto-generate QR Scanner**
-- [✅] Backend: `app/api/payments/upi-qr/route.js` (POST: generate dynamic QR per order total)
-- [✅] Frontend: Update `app/checkout/page.jsx` (dynamic QR fetch, html5-qrcode scanner on transactionId)
-- [✅] Install: `npm i html5-qrcode qrcode`
-- [✅] Test: Scan generates transaction ID, order verification
-- [ ] Frontend: Update `app/checkout/page.jsx` (dynamic QR fetch, html5-qrcode scanner on transactionId)
-- [ ] Install: `npm i html5-qrcode qrcode`
-- [ ] Test: Scan generates transaction ID, order verification
+**Notes:** 
+- Root cause: Timezone mismatch in Date parsing vs DB stored dates.
+- No model changes needed.
 
-**4. Replace Custom Order → Immediate Chat (HTTP Polling)**
-- [ ] Model: Create `models/chat.js` (threads: userId, adminId, messages[])
-- [ ] APIs: `app/api/chat/route.js` (user: POST message; admin: GET threads, POST reply)
-- [ ] User UI: Replace `app/customorder/page.jsx` → Chat interface (message list, send input)
-- [ ] Admin UI: Replace `app/admin/custom/page.jsx` → Chat admin (thread list, reply)
-- [ ] Context: `app/context/ChatContext.jsx` (polling)
-- [ ] Update: navbar.jsx, admin sidebar links "Custom Order" → "Chat"
-- [ ] Migrate: Existing custom orders → chat threads (optional)
-- [ ] Install: `npm i socket.io-client` (future upgrade)
-- [ ] Test: User/admin send/receive messages real-time polling
-
-## Follow-up After Edits
-- [ ] Install deps: `npm i html5-qrcode qrcode`
-- [ ] `npm run dev` → Test all features
-- [ ] Seed test coupons/chats
-- [ ] Complete → attempt_completion
-
-**Progress: Ready to implement step-by-step.**
+## Previous TODO (completed):
+[Prior content about general 400 fixes]

@@ -24,7 +24,7 @@ export default function ShippingPage() {
       </section>
       <section>
         <h2>Custom Orders</h2>
-        <p>7-14 business days + standard shipping.</p>ca
+        <p>7-14 business days + standard shipping.</p>
       </section>
       <section>
         <h2>Track Order</h2>

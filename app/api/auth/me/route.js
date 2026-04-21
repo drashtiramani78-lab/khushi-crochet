@@ -17,28 +17,32 @@ export async function GET() {
     }
 
     const decoded = verifyToken(token);
+    console.log("DEBUG /api/auth/me: token valid, decoded.id =", decoded?.id);
 
-    if (!decoded) {
+    if (!decoded || !decoded.id) {
+      console.log("DEBUG /api/auth/me: invalid/missing decoded.id");
       return NextResponse.json({ user: null }, { status: 200 });
     }
 
-    await connectDB();
+    try {
+      await connectDB();
+      console.log("DEBUG /api/auth/me: DB connected, fetching user", decoded.id);
+      
+      const user = await User.findById(decoded.id).select("-password");
+      
+      if (!user) {
+        console.log("DEBUG /api/auth/me: user not found for id", decoded.id);
+        return NextResponse.json({ user: null }, { status: 200 });
+      }
 
-    const user = await User.findById(decoded.id).select("-password");
-
-    if (!user) {
+      console.log("DEBUG /api/auth/me: user fetched successfully");
+      return NextResponse.json({ user }, { status: 200 });
+    } catch (dbError) {
+      console.error("DEBUG /api/auth/me DB ERROR:", dbError.message || dbError);
       return NextResponse.json({ user: null }, { status: 200 });
     }
-
-    return NextResponse.json({ user }, { status: 200 });
   } catch (error) {
-    console.error("ME ERROR:", error);
-
-    return NextResponse.json(
-      {
-        message: error?.message || "Failed to fetch user",
-      },
-      { status: 500 }
-    );
+    console.error("ME ERROR (outer):", error.message || error, error.stack);
+    return NextResponse.json({ user: null }, { status: 200 });
   }
 }

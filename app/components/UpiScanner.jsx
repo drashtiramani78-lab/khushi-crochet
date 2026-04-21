@@ -3,24 +3,34 @@
 import { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from "html5-qrcode";
 
-export default function UpiScanner({ onScan, totalAmount, orderPreviewId }) {
+export default function UpiScanner({ onScan, totalAmount }) {
   const [scanning, setScanning] = useState(false);
-  const scannerRef = useRef(null);
   const [error, setError] = useState('');
+
+  const toggleScanner = () => {
+    setScanning(!scanning);
+    setError('');
+  };
 
   useEffect(() => {
     let scanner;
-    if (scanning && scannerRef.current) {
+    if (scanning) {
+      const onScanSuccess = (decodedText) => {
+        setScanning(false);
+        onScan(decodedText);
+      };
+
+      const onScanError = () => {
+        // silent fail
+      };
+
       scanner = new Html5QrcodeScanner(
         "qr-reader",
         { fps: 10, qrbox: { width: 250, height: 250 } },
         false
       );
 
-      scanner.render(
-        onScanSuccess,
-        onScanError
-      );
+      scanner.render(onScanSuccess, onScanError);
     }
 
     return () => {
@@ -28,46 +38,25 @@ export default function UpiScanner({ onScan, totalAmount, orderPreviewId }) {
         scanner.clear();
       }
     };
-  }, [scanning]);
-
-  const onScanSuccess = (decodedText) => {
-    setScanning(false);
-    onScan(decodedText);
-  };
-
-  const onScanError = (error) => {
-    // silent fail
-  };
-
-  const toggleScanner = () => {
-    setScanning(!scanning);
-    setError('');
-  };
+  }, [scanning, onScan]);
 
   return (
-    <div style={{ marginTop: '16px' }}>
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+    <div className="upi-scanner-container">
+      <div className="upi-scanner-toggle-wrapper">
         <button 
           onClick={toggleScanner}
-          style={{
-            padding: '8px 16px',
-            border: '1px solid #b59a7a',
-            background: scanning ? '#fff' : 'rgba(181, 154, 122, 0.1)',
-            color: '#2f2723',
-            borderRadius: '20px',
-            cursor: 'pointer',
-            fontSize: '13px'
-          }}
+          className={`upi-scan-btn ${scanning ? 'upi-scan-btn-stop' : 'upi-scan-btn-start'}`}
+          aria-label={scanning ? 'Stop QR scanner' : 'Start QR scanner for UPI transaction'}
         >
           {scanning ? 'Stop Scanner' : '📱 Scan QR to Auto-fill'}
         </button>
-        <small style={{ color: '#6e6259', fontSize: '12px' }}>
+        <small className="upi-scan-hint">
           Scan any UPI payment confirmation QR
         </small>
       </div>
 
       {error && (
-        <div style={{ color: '#dc3545', fontSize: '12px', marginTop: '8px' }}>
+        <div className="upi-scan-error">
           {error}
         </div>
       )}
@@ -75,12 +64,7 @@ export default function UpiScanner({ onScan, totalAmount, orderPreviewId }) {
       {scanning && (
         <div 
           id="qr-reader" 
-          style={{ 
-            marginTop: '12px', 
-            width: '100%', 
-            maxWidth: '300px',
-            margin: '12px auto'
-          }}
+          className="upi-qr-reader-wrapper"
         />
       )}
     </div>

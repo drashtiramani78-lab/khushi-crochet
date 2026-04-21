@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import styles from '@/app/styles/account-settings.module.css';
@@ -23,18 +23,20 @@ export default function AccountSettings() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  const formDataInitial = useMemo(() => ({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+  }), [user]);
+
   useEffect(() => {
-    if (!authLoading && user) {
-      setFormData({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-      });
-      setLoading(false);
-    } else if (!authLoading && !user) {
+    if (!authLoading && !user) {
       router.push('/login?redirect=/account-settings');
+    } else if (!authLoading && user) {
+      setFormData(formDataInitial);
+      setLoading(false);
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, router, formDataInitial]);
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target;

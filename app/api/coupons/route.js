@@ -1,7 +1,6 @@
 import { connectDB } from '@/lib/mongodb';
 import Coupon from '@/models/coupon';
-import { jwtVerify } from 'jose';
-import { getJoseSecret } from '@/lib/auth';
+import { getAuthUser } from '@/lib/auth';
 import { sanitizeString, checkXSSThreats } from '@/lib/sanitization';
 
 export async function GET(req) {
@@ -52,16 +51,14 @@ export async function POST(req) {
   try {
     await connectDB();
     
-    const token = req.headers.get('authorization')?.split(' ')[1];
-    if (!token) {
+    const userPayload = await getAuthUser();
+    if (!userPayload) {
       return Response.json(
         { success: false, error: 'Not authenticated' },
         { status: 401 }
       );
     }
-    
-    const verified = await jwtVerify(token, getJoseSecret());
-    const userId = verified.payload.userId;
+    const userId = userPayload.id;
     
     let body = await req.json();
 

@@ -24,9 +24,35 @@ export async function PUT(req, { params }) {
     const { id } = params;
     const body = await req.json();
 
+    const validFromStr = body.validFrom;
+    const validTillStr = body.validTill;
+    const validFrom = new Date(`${validFromStr}T00:00:00Z`);
+    const validTill = new Date(`${validTillStr}T00:00:00Z`);
+    
+    console.log('Parsed coupon dates - from:', validFrom.toISOString(), 'till:', validTill.toISOString());
+    
+    if (isNaN(validFrom) || isNaN(validTill) || validTill <= validFrom) {
+      return NextResponse.json(
+        { success: false, error: "Invalid dates: Valid till must be after valid from" },
+        { status: 400 }
+      );
+    }
+
+    const couponData = {
+      ...body,
+      validFrom,
+      validTill,
+      discountValue: parseFloat(body.discountValue) || 0,
+      minOrderAmount: parseFloat(body.minOrderAmount) || 0,
+      maxDiscount: body.maxDiscount ? parseFloat(body.maxDiscount) : null,
+      usageLimit: body.usageLimit ? parseInt(body.usageLimit) : null,
+      perUserLimit: parseInt(body.perUserLimit) || 1,
+      isActive: Boolean(body.isActive)
+    };
+
     const coupon = await Coupon.findByIdAndUpdate(
       id,
-      { ...body, validFrom: new Date(body.validFrom), validTill: new Date(body.validTill) },
+      couponData,
       { new: true, runValidators: true }
     );
 
@@ -43,9 +69,40 @@ export async function PUT(req, { params }) {
     });
   } catch (error) {
     console.error('Error updating coupon:', error);
+    
+    console.error('PUT Coupon Error:', error.name, error.message);
+    
+    if (error.name === 'CastError') {
+      return NextResponse.json(
+        { success: false, error: 'Invalid coupon ID' },
+        { status: 404 }
+      );
+    }
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors);
+      let errorMsg = 'Validation failed: ';
+      
+      const dateErrors = [];
+      if (errors.find(e => e.path === 'validFrom')) dateErrors.push('Valid from date invalid');
+      if (errors.find(e => e.path === 'validTill')) dateErrors.push('Valid till date invalid');
+      if (errors.find(e => e.path === 'validTill' && e.message.includes('valid from'))) dateErrors.push('Valid till must be after valid from');
+      
+      if (dateErrors.length > 0) {
+        errorMsg += dateErrors.join(', ');
+      } else {
+        errorMsg += errors.map(e => e.message).join(', ');
+      }
+      
+      return NextResponse.json(
+        { success: false, error: errorMsg },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 400 }
+      { success: false, error: error.message || 'Failed to update coupon' },
+      { status: 500 }
     );
   }
 }
@@ -78,7 +135,13 @@ export async function DELETE(req, { params }) {
       data: coupon,
     });
   } catch (error) {
-    console.error('Error deleting coupon:', error);
+    console.error('DELETE Coupon Error:', error.name, error.message);
+    if (error.name === 'CastError') {
+      return NextResponse.json(
+        { success: false, error: 'Invalid coupon ID' },
+        { status: 404 }
+      );
+    }
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }

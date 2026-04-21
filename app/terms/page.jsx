@@ -32,7 +32,7 @@ export default function TermsPage() {
           <h2>5. Governing Law</h2>
           <p>Laws of India apply. Disputes in Mumbai courts.</p>
         </section>
-        <p className="updated">Last updated: $(new Date().toLocaleDateString())</p>
+<p className="updated">Last updated: {new Date().toLocaleDateString()}</p>
       </main>
   );
 }

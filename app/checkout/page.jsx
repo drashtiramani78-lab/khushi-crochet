@@ -1,34 +1,36 @@
 "use client";
 
-import "../../app/styles/checkout.css";
-import { useState, useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+import "../styles/checkout.css";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 import { useCart } from "@/app/context/CartContext";
 import { useAuth } from "@/app/context/AuthContext";
-import Link from "next/link";
+import { useToast } from "../components/ToastProvider";
 import CouponInput from "../components/CouponInput";
 import UpiScanner from "../components/UpiScanner";
-
 
 function CheckoutContent() {
   const router = useRouter();
   const { user, authLoading } = useAuth();
   const { cart, getCartTotal, clearCart } = useCart();
-  
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login?redirect=/checkout");
-    }
-  }, [user, authLoading, router]);
+  const { addToast } = useToast();
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [copied, setCopied] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState({ couponCode: '', discount: 0, finalTotal: 0 });
-  const [upiQr, setUpiQr] = useState(null);
-  const [qrLoading, setQrLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState({
+    couponCode: "",
+    discount: 0,
+    finalTotal: 0,
+  });
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -43,26 +45,31 @@ function CheckoutContent() {
 
   const UPI_ID = "drashtiramani78@okhdfcbank";
 
-  const generateUpiQr = async () => {
-    if (!totalAmount) return;
-    setQrLoading(true);
-    try {
-      const tempOrderId = `preview_${Date.now()}`;
-      const res = await fetch('/api/payments/upi-qr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: totalAmount, orderId: tempOrderId })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setUpiQr(data.data);
-      }
-    } catch (error) {
-      console.error('QR gen error:', error);
-    } finally {
-      setQrLoading(false);
+  const subtotal = getCartTotal();
+  const discountedTotal = appliedCoupon.finalTotal > 0 ? appliedCoupon.finalTotal : subtotal;
+  const totalAmount = discountedTotal; // Shipping free
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      setForm((prev) => ({
+        ...prev,
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        city: user.city || "",
+        state: user.state || "",
+        address: user.address || "",
+      }));
     }
-  };
+  }, [user, authLoading]);
+
+  useEffect(() => {
+      if (!authLoading && !user) {
+        router.push("/login?redirect=/");
+      }
+  }, [user, authLoading, router]);
+
+
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -117,7 +124,7 @@ function CheckoutContent() {
     }
 
     if (paymentMethod === "upi_qr" && !form.transactionId.trim()) {
-      errors.transactionId = "UPI transaction ID is required";
+      errors.transactionId = "UPI Transaction ID is required";
     }
 
     setFormErrors(errors);
@@ -126,10 +133,17 @@ function CheckoutContent() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
 
     if (formErrors[name]) {
-      setFormErrors({ ...formErrors, [name]: "" });
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
     }
   };
 
@@ -143,526 +157,582 @@ function CheckoutContent() {
     }
   };
 
-  const placeOrder = async () => {
-    if (!validateForm()) {
-      return;
+  const generateUpiDeepLink = () => {
+    const merchantName = "Khushi Crochet";
+    const amount = totalAmount.toFixed(2);
+    const txnNote = `Payment for Crochet Order - ₹${amount}`;
+    
+    const params = new URLSearchParams({
+      pa: UPI_ID,
+      pn: merchantName,
+      am: amount,
+      cu: "INR",
+      tn: txnNote,
+    });
+    
+    return `upi://pay?${params.toString()}`;
+  };
+
+  const copyUpiDeepLink = async () => {
+    try {
+      const deepLink = generateUpiDeepLink();
+      await navigator.clipboard.writeText(deepLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      alert(`UPI Deep Link copied!\n\nPaste in GPay/PhonePe app:\n${deepLink}`);
+    } catch (error) {
+      console.error("Copy failed:", error);
+      prompt("Copy this UPI link manually:", generateUpiDeepLink());
     }
+  };
+
+  const placeOrder = async () => {
+    if (!validateForm()) return;
 
     if (cart.length === 0) {
-      alert("Your cart is empty");
+      setErrorMessage("Your cart is empty");
       return;
     }
 
     setIsProcessing(true);
+    setErrorMessage("");
+    setSuccessMessage("");
 
     try {
-      const totalAmount = getCartTotal();
-      await createOrder(totalAmount);
+      await createOrder();
     } catch (error) {
       console.error("Checkout error:", error);
+      setErrorMessage("Something went wrong. Please try again.");
+    } finally {
       setIsProcessing(false);
-      alert("Something went wrong. Please try again.");
     }
   };
 
-  const createOrder = async () => {
+      const createOrder = async () => {
     try {
+      // Validate cart product IDs before API call
+      for (const item of cart) {
+        if (!item._id || !/^[0-9a-fA-F]{24}$/.test(item._id)) {
+          console.error("INVALID PRODUCT ID IN CART:", item._id, "Item:", item);
+          setErrorMessage(`Invalid cart item: ${item.name || 'Unknown'} missing valid product ID. Clear cart and re-add items.`);
+          // Clear corrupted cart
+          localStorage.removeItem('cart');
+          window.location.reload();
+          return;
+        }
+      }
+      console.log("✅ Cart validation passed. Product IDs:", cart.map(item => item._id));
+
+      const paymentMethodMap = {
+        cod: "COD",
+        upi_qr: "UPI_QR",
+      };
+
       const orderData = {
-        customerName: form.name,
-        email: form.email,
-        phone: form.phone,
-        address: form.address,
-        city: form.city,
-        state: form.state,
-        pincode: form.pincode,
-        country: 'India',
+        customerName: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.replace(/\D/g, ""),
+        address: form.address.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+        pincode: form.pincode.trim(),
+        country: "India",
         items: cart.map((item) => ({
           productId: item._id,
-          name: item.name,
+          name: item.name.trim(),
           price:
             typeof item.price === "string"
               ? parseFloat(item.price.replace(/[^\d.]/g, ""))
-              : item.price,
-          quantity: item.quantity,
-          image: item.image,
+              : Number(item.price),
+          quantity: Number(item.quantity),
+          image: item.image || "",
         })),
         subtotal: getCartTotal(),
         shippingCost: 0,
-        couponCode: appliedCoupon.couponCode,
-        discount: appliedCoupon.discount,
-        totalAmount: totalAmount,
-
-        paymentMethod: paymentMethod,
-        paymentStatus: paymentMethod === "cod" ? "pending" : "pending_verification",
-        orderStatus: "pending",
+        couponCode: appliedCoupon.couponCode || "",
+        discount: appliedCoupon.discount || 0,
+        totalAmount,
+        paymentMethod: paymentMethodMap[paymentMethod] || "COD",
+        paymentStatus:
+          paymentMethodMap[paymentMethod] === "COD"
+            ? "Pending"
+            : "Pending_Verification",
+        orderStatus: "Pending",
       };
 
-      // Add transaction ID for UPI payments
       if (paymentMethod === "upi_qr") {
-        orderData.transactionId = form.transactionId;
+        orderData.transactionId = form.transactionId.trim();
         orderData.upiId = UPI_ID;
       }
 
+      for (const item of orderData.items) {
+        if (!item.productId || !/^[0-9a-fA-F]{24}$/.test(item.productId)) {
+          throw new Error(`Invalid product ID: ${item.productId}`);
+        }
+
+        if (!item.name || item.price <= 0 || item.quantity < 1) {
+          throw new Error("Invalid cart item data");
+        }
+      }
+
+      console.log("🔄 Sending order data:", { totalAmount, paymentMethod: paymentMethodMap[paymentMethod], itemCount: orderData.items.length });
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(orderData),
+        credentials: "include",
       });
 
+      console.log("📡 API Response:", res.status, res.statusText);
       const data = await res.json();
+      console.error("API Data Response:", data);
 
-      // Check for authentication error
       if (res.status === 401) {
-        alert("Please login to place an order");
-        router.push("/login?redirect=/checkout");
+        setErrorMessage("Please login to place an order");
+        router.push("/login?redirect=/");
         return;
       }
 
       if (res.ok) {
         const trackingId = data.data?.trackingId || data.data?._id || "N/A";
-        
-        if (paymentMethod === "stripe") {
-          // Redirect to Stripe payment
-          router.push(`/payment/stripe?orderId=${data.data._id}`);
-        } else if (paymentMethod === "razorpay") {
-          // Redirect to Razorpay payment
-          router.push(`/payment/razorpay?orderId=${data.data._id}`);
-        } else {
-          // Direct order confirmation for COD and UPI
-          alert(
-            paymentMethod === "upi_qr"
-              ? `Order placed successfully! Payment will be verified soon. Your order ID: ${trackingId}`
-              : `Order placed successfully! Your order ID: ${trackingId}`
-          );
-          clearCart();
+        const orderMsg = paymentMethod === "upi_qr"
+          ? `Order placed! Payment verification pending. ID: ${trackingId}`
+          : `Order placed successfully! ID: ${trackingId}`;
+
+        setSuccessMessage(orderMsg);
+
+        addToast({
+          type: 'success',
+          title: 'Order Confirmed! 🎉',
+          description: `Order ID: ${trackingId}. We've received your order and will process it shortly. Check your orders page or track below.`,
+          duration: 5000
+        });
+
+        clearCart();
+        setTimeout(() => {
           router.push(`/order-track?id=${trackingId}`);
-        }
+        }, 3000);
       } else {
-        alert(data.message || "Failed to place order");
-        setIsProcessing(false);
+        console.error("API ERROR 4xx/5xx:", res.status, data);
+        setErrorMessage(
+          data.message || data.errors?.[0] || `Server error ${res.status}`
+        );
       }
     } catch (error) {
-      console.error("Order creation error:", error);
-      setIsProcessing(false);
-      alert("Failed to create order. Please try again.");
+      console.error("FETCH FAILED:", error.message);
+      console.error("OrderData sample:", { customerName: orderData.customerName, itemsCount: orderData.items.length });
+      setErrorMessage(
+        `Network error: ${error.message}. Check console. Server may be unstable.`
+      );
     }
   };
 
   if (cart.length === 0) {
     return (
-      <div style={styles.emptyCart}>
-        <div style={styles.emptyContent}>
-          <h2 style={styles.emptyTitle}>Your Cart is Empty</h2>
-          <p style={styles.emptyText}>
-            Add some products before proceeding to checkout
-          </p>
-          <Link href="/products" style={styles.continueShoppingBtn}>
-            Continue Shopping
-          </Link>
-        </div>
+<div className="empty-cart-hero">
+        <h2 className="empty-title">Your Cart is Empty</h2>
+        <p className="empty-subtitle">Add some beautiful crochet creations before proceeding to checkout</p>
+        <Link href="/products" className="checkout-btn checkout-btn-primary">
+          Continue Shopping →
+        </Link>
       </div>
     );
   }
 
-  // Show loading while checking authentication
   if (authLoading) {
     return (
-      <div style={styles.emptyCart}>
-        <div style={styles.emptyContent}>
-          <h2 style={styles.emptyTitle}>Loading...</h2>
-          <p style={styles.emptyText}>Please wait</p>
-        </div>
+<div className="loading-checkout">
+        <LoadingSpinner size="lg" />
+        <span className="ml-3 text-xl font-bold text-gray-700">Preparing checkout...</span>
       </div>
     );
   }
 
-  const subtotal = getCartTotal();
-  const totalAmount = appliedCoupon.finalTotal > 0 ? appliedCoupon.finalTotal : subtotal;
-
-
   return (
-    <div className="checkout-page">
-      <div className="container">
-        <div className="checkout-page-header">
-          <div className="checkout-breadcrumb">
-            <Link href="/" className="checkout-breadcrumb-link">
-              Home
-            </Link>
-            <span className="checkout-breadcrumb-separator">/</span>
-            <Link href="/cart" className="checkout-breadcrumb-link">
-              Cart
-            </Link>
-            <span className="checkout-breadcrumb-separator">/</span>
-            <span className="checkout-breadcrumb-current">Checkout</span>
-          </div>
-          <h1 className="checkout-heading">Complete Your Order</h1>
-        </div>
+<div className="checkout-page">
+      <div className="checkout-container">
+        <nav className="checkout-breadcrumb">
+          <Link href="/">Home</Link>
+          <span>/</span>
+          <Link href="/cart">Cart</Link>
+          <span>/</span>
+          <h1 className="checkout-title">Checkout</h1>
+        </nav>
 
-        <div className="checkout-wrapper">
-          <div className="checkout-left">
+{errorMessage && (
+          <div className="alert-error">
+            {errorMessage}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="alert-success">
+            {successMessage}
+          </div>
+        )}
+
+<div className="checkout-grid">
+          <div className="checkout-form-card">
             <h2 className="checkout-section-title">Shipping Address</h2>
 
-            <div className="checkout-form-group">
-              <label className="checkout-label">Full Name *</label>
-              <input
-                type="text"
-                name="name"
-                placeholder="John Doe"
-                value={form.name}
-                onChange={handleChange}
-                className={`checkout-input ${formErrors.name ? "error" : ""}`}
-              />
-              {formErrors.name && (
-                <span className="checkout-error">{formErrors.name}</span>
-              )}
-            </div>
-
-            <CouponInput 
-              cartTotal={subtotal}
-              onCouponApply={setAppliedCoupon}
-              className="checkout-coupon-section"
-            /> 
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Email *</label>
-              <input
-                type="email"
-                name="email"
-                placeholder="john@example.com"
-                value={form.email}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  borderColor: formErrors.email ? "#dc3545" : "#ddd3c7",
-                }}
-              />
-              {formErrors.email && (
-                <span style={styles.error}>{formErrors.email}</span>
-              )}
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Phone Number *</label>
-              <input
-                type="tel"
-                name="phone"
-                placeholder="9876543210"
-                value={form.phone}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  borderColor: formErrors.phone ? "#dc3545" : "#ddd3c7",
-                }}
-              />
-              {formErrors.phone && (
-                <span style={styles.error}>{formErrors.phone}</span>
-              )}
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Full Address *</label>
-              <textarea
-                name="address"
-                placeholder="House No., Street Name, Apartment/Suite"
-                value={form.address}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  minHeight: "100px",
-                  borderColor: formErrors.address ? "#dc3545" : "#ddd3c7",
-                  resize: "vertical",
-                }}
-              />
-              {formErrors.address && (
-                <span style={styles.error}>{formErrors.address}</span>
-              )}
-            </div>
-
-            <div style={styles.twoColumns}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>City *</label>
+            <div className="space-y-5">
+              <div>
+                <label className="checkout-label">Full Name *</label>
                 <input
                   type="text"
-                  name="city"
-                  placeholder="Mumbai"
-                  value={form.city}
+                  name="name"
+                  placeholder="John Doe"
+                  value={form.name}
                   onChange={handleChange}
-                  style={{
-                    ...styles.input,
-                    borderColor: formErrors.city ? "#dc3545" : "#ddd3c7",
-                  }}
+                  className={`checkout-input ${formErrors.name ? 'error' : ''}`}
                 />
-                {formErrors.city && (
-                  <span style={styles.error}>{formErrors.city}</span>
+                {formErrors.name && <span className="checkout-error">{formErrors.name}</span>}
+              </div>
+
+              <CouponInput cartTotal={subtotal} onCouponApply={setAppliedCoupon} />
+
+              <div>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#2f2723] mb-2">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="john@example.com"
+                  value={form.email}
+                  onChange={handleChange}
+                  className={`w-full p-4 rounded-2xl border-2 transition-all font-medium text-lg ${
+                    formErrors.email
+                      ? "border-red-400 bg-red-50"
+                      : "border-[#ddd3c7] bg-[#fffbf8] hover:border-[#b59a7a]"
+                  }`}
+                />
+                {formErrors.email && (
+                  <span className="block mt-2 text-red-500 text-sm font-semibold">
+                    {formErrors.email}
+                  </span>
                 )}
               </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.label}>State *</label>
+              <div>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#2f2723] mb-2">
+                  Phone Number *
+                </label>
                 <input
-                  type="text"
-                  name="state"
-                  placeholder="Maharashtra"
-                  value={form.state}
+                  type="tel"
+                  name="phone"
+                  placeholder="9876543210"
+                  value={form.phone}
                   onChange={handleChange}
-                  style={{
-                    ...styles.input,
-                    borderColor: formErrors.state ? "#dc3545" : "#ddd3c7",
-                  }}
+                  className={`w-full p-4 rounded-2xl border-2 transition-all font-medium text-lg ${
+                    formErrors.phone
+                      ? "border-red-400 bg-red-50"
+                      : "border-[#ddd3c7] bg-[#fffbf8] hover:border-[#b59a7a]"
+                  }`}
                 />
-                {formErrors.state && (
-                  <span style={styles.error}>{formErrors.state}</span>
+                {formErrors.phone && (
+                  <span className="block mt-2 text-red-500 text-sm font-semibold">
+                    {formErrors.phone}
+                  </span>
                 )}
               </div>
-            </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Pincode *</label>
-              <input
-                type="text"
-                name="pincode"
-                placeholder="400001"
-                maxLength="6"
-                value={form.pincode}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  borderColor: formErrors.pincode ? "#dc3545" : "#ddd3c7",
-                }}
-              />
-              {formErrors.pincode && (
-                <span style={styles.error}>{formErrors.pincode}</span>
-              )}
-            </div>
-
-            <h2 style={{ ...styles.sectionTitle, marginTop: "40px" }}>
-              Payment Method
-            </h2>
-
-            <div style={styles.paymentOptions}>
-              {/* Cash on Delivery */}
-              <label
-                style={{
-                  ...styles.paymentLabel,
-                  borderColor: paymentMethod === "cod" ? "#b59a7a" : "#ddd3c7",
-                  backgroundColor:
-                    paymentMethod === "cod"
-                      ? "rgba(181, 154, 122, 0.05)"
-                      : "#fff",
-                }}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="cod"
-                  checked={paymentMethod === "cod"}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  style={{ marginRight: "12px", cursor: "pointer" }}
+              <div>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#2f2723] mb-2">
+                  Full Address *
+                </label>
+                <textarea
+                  name="address"
+                  placeholder="House No., Street Name, Apartment/Suite, Landmark"
+                  value={form.address}
+                  onChange={handleChange}
+                  rows={4}
+                  className={`w-full p-4 rounded-2xl border-2 transition-all font-medium text-lg resize-vertical ${
+                    formErrors.address
+                      ? "border-red-400 bg-red-50"
+                      : "border-[#ddd3c7] bg-[#fffbf8] hover:border-[#b59a7a]"
+                  }`}
                 />
-                <span>
-                  <strong style={{fontWeight: "700"}}>💵 Cash on Delivery (COD)</strong>
-                  <p style={{margin: "4px 0 0 0", fontSize: "13px", color: "#999"}}>Pay when you receive</p>
-                </span>
-              </label>
+                {formErrors.address && (
+                  <span className="block mt-2 text-red-500 text-sm font-semibold">
+                    {formErrors.address}
+                  </span>
+                )}
+              </div>
 
-              {/* Stripe Card Payment */}
-              <label
-                style={{
-                  ...styles.paymentLabel,
-                  borderColor: paymentMethod === "stripe" ? "#b59a7a" : "#ddd3c7",
-                  backgroundColor:
-                    paymentMethod === "stripe"
-                      ? "rgba(181, 154, 122, 0.05)"
-                      : "#fff",
-                }}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="stripe"
-                  checked={paymentMethod === "stripe"}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  style={{ marginRight: "12px", cursor: "pointer" }}
-                />
-                <span>
-                  <strong style={{fontWeight: "700"}}>💳 Credit/Debit Card (Stripe)</strong>
-                  <p style={{margin: "4px 0 0 0", fontSize: "13px", color: "#999"}}>Secure card payment</p>
-                </span>
-              </label>
-
-              {/* Razorpay Payment */}
-              <label
-                style={{
-                  ...styles.paymentLabel,
-                  borderColor: paymentMethod === "razorpay" ? "#b59a7a" : "#ddd3c7",
-                  backgroundColor:
-                    paymentMethod === "razorpay"
-                      ? "rgba(181, 154, 122, 0.05)"
-                      : "#fff",
-                }}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="razorpay"
-                  checked={paymentMethod === "razorpay"}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  style={{ marginRight: "12px", cursor: "pointer" }}
-                />
-                <span>
-                  <strong style={{fontWeight: "700"}}>🏦 Razorpay (Cards, UPI, Wallets)</strong>
-                  <p style={{margin: "4px 0 0 0", fontSize: "13px", color: "#999"}}>Multiple payment options</p>
-                </span>
-              </label>
-
-              {/* UPI QR Payment */}
-              <label
-                style={{
-                  ...styles.paymentLabel,
-                  borderColor:
-                    paymentMethod === "upi_qr" ? "#b59a7a" : "#ddd3c7",
-                  backgroundColor:
-                    paymentMethod === "upi_qr"
-                      ? "rgba(181, 154, 122, 0.05)"
-                      : "#fff",
-                }}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="upi_qr"
-                  checked={paymentMethod === "upi_qr"}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  style={{ marginRight: "12px", cursor: "pointer" }}
-                />
-                <span>
-                  <strong style={{fontWeight: "700"}}>📱 UPI QR (Google Pay/PhonePe/Paytm)</strong>
-                  <p style={{margin: "4px 0 0 0", fontSize: "13px", color: "#999"}}>Instant payment via UPI</p>
-                </span>
-              </label>
-            </div>
-
-            {paymentMethod === "upi_qr" && (
-              <div style={styles.upiBox}>
-                <h3 style={styles.upiTitle}>Scan & Pay</h3>
-
-                <div style={styles.qrWrapper}>
-                  {upiQr ? (
-                    <div 
-                      dangerouslySetInnerHTML={{ __html: upiQr.qrSvg }} 
-                      style={{ ...styles.qrImage, width: '220px', height: '220px' }}
-                    />
-                  ) : qrLoading ? (
-                    <div style={{ width: '220px', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f5f0', borderRadius: '12px', border: '1px solid #ddd3c7' }}>
-                      Generating QR...
-                    </div>
-                  ) : (
-                    <Image
-                      src={"/upi-qr.png"}
-                      alt="UPI QR Code"
-                      width={220}
-                      height={220}
-                      style={styles.qrImage}
-                    />
-                  )}
-                  {!upiQr && !qrLoading && (
-                    <button 
-                      onClick={generateUpiQr}
-                      style={{
-                        marginTop: '8px',
-                        padding: '8px 16px',
-                        background: '#b59a7a',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '20px',
-                        cursor: 'pointer',
-                        fontSize: '13px'
-                      }}
-                    >
-                      Generate Dynamic QR for ₹{totalAmount.toFixed(2)}
-                    </button>
-                  )}
-                </div>
-
-                <p style={styles.upiText}>
-                  Scan this QR code using Google Pay, PhonePe, Paytm or any UPI app.
-                </p>
-
-                <div style={styles.upiIdBox}>
-                  <span style={styles.upiIdLabel}>UPI ID:</span>
-                  <span style={styles.upiIdValue}>{UPI_ID}</span>
-                  <button
-                    type="button"
-                    onClick={copyUpiId}
-                    style={styles.copyBtn}
-                  >
-                    {copied ? "Copied" : "Copy"}
-                  </button>
-                </div>
-
-                <div style={styles.paymentNote}>
-                  Please pay <strong>₹{totalAmount.toFixed(2)}</strong> and enter
-                  your UPI transaction ID below.
-                </div>
-
-                <div style={{ marginTop: "18px" }}>
-                  <label style={styles.label}>UPI Transaction ID *</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-semibold uppercase tracking-wide text-[#2f2723] mb-2">
+                    City *
+                  </label>
                   <input
                     type="text"
-                    name="transactionId"
-                    placeholder="Enter transaction ID"
-                    value={form.transactionId}
+                    name="city"
+                    placeholder="Mumbai"
+                    value={form.city}
                     onChange={handleChange}
-                    style={{
-                      ...styles.input,
-                      borderColor: formErrors.transactionId
-                        ? "#dc3545"
-                        : "#ddd3c7",
-                    }}
+                    className={`w-full p-4 rounded-2xl border-2 transition-all font-medium text-lg ${
+                      formErrors.city
+                        ? "border-red-400 bg-red-50"
+                        : "border-[#ddd3c7] bg-[#fffbf8] hover:border-[#b59a7a]"
+                    }`}
                   />
-                  {formErrors.transactionId && (
-                    <span style={styles.error}>{formErrors.transactionId}</span>
+                  {formErrors.city && (
+                    <span className="block mt-2 text-red-500 text-sm font-semibold">
+                      {formErrors.city}
+                    </span>
                   )}
-                  <UpiScanner 
-                    onScan={(decodedText) => {
-                      setForm({ ...form, transactionId: decodedText });
-                    }} 
-                    totalAmount={totalAmount} 
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold uppercase tracking-wide text-[#2f2723] mb-2">
+                    State *
+                  </label>
+                  <input
+                    type="text"
+                    name="state"
+                    placeholder="Maharashtra"
+                    value={form.state}
+                    onChange={handleChange}
+                    className={`w-full p-4 rounded-2xl border-2 transition-all font-medium text-lg ${
+                      formErrors.state
+                        ? "border-red-400 bg-red-50"
+                        : "border-[#ddd3c7] bg-[#fffbf8] hover:border-[#b59a7a]"
+                    }`}
                   />
+                  {formErrors.state && (
+                    <span className="block mt-2 text-red-500 text-sm font-semibold">
+                      {formErrors.state}
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
-            <import UpiScanner from "../components/UpiScanner"; from "@/app/components/UpiScanner"; 
+
+              <div>
+                <label className="block text-sm font-semibold uppercase tracking-wide text-[#2f2723] mb-2">
+                  Pincode *
+                </label>
+                <input
+                  type="text"
+                  name="pincode"
+                  placeholder="400001"
+                  maxLength={6}
+                  value={form.pincode}
+                  onChange={handleChange}
+                  className={`w-full p-4 rounded-2xl border-2 transition-all font-medium text-lg ${
+                    formErrors.pincode
+                      ? "border-red-400 bg-red-50"
+                      : "border-[#ddd3c7] bg-[#fffbf8] hover:border-[#b59a7a]"
+                  }`}
+                />
+                {formErrors.pincode && (
+                  <span className="block mt-2 text-red-500 text-sm font-semibold">
+                    {formErrors.pincode}
+                  </span>
+                )}
+              </div>
+
+              <h2 className="text-2xl font-bold text-[#2f2723] mt-16 mb-6">
+                Payment Method
+              </h2>
+
+              <div className="space-y-3">
+                <label
+                  className={`flex items-center p-4 border-2 rounded-2xl cursor-pointer transition-all ${
+                    paymentMethod === "cod"
+                      ? "border-[#b59a7a] bg-[#b59a7a]/5 ring-2 ring-[#b59a7a]/20"
+                      : "border-[#ddd3c7] hover:border-[#b59a7a]"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="cod"
+                    checked={paymentMethod === "cod"}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="mr-4 w-5 h-5 text-[#b59a7a] cursor-pointer"
+                  />
+                  <div>
+                    <div className="font-bold text-lg">💵 Cash on Delivery</div>
+                    <p className="text-sm text-[#999] mt-1">
+                      Pay securely when you receive your order
+                    </p>
+                  </div>
+                </label>
+
+                <label
+                  className={`flex items-center p-4 border-2 rounded-2xl cursor-pointer transition-all ${
+                    paymentMethod === "upi_qr"
+                      ? "border-[#b59a7a] bg-[#b59a7a]/5 ring-2 ring-[#b59a7a]/20"
+                      : "border-[#ddd3c7] hover:border-[#b59a7a]"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="upi_qr"
+                    checked={paymentMethod === "upi_qr"}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="mr-4 w-5 h-5 text-[#b59a7a] cursor-pointer"
+                  />
+                  <div>
+                    <div className="font-bold text-lg">📱 UPI QR (Instant)</div>
+                    <p className="text-sm text-[#999] mt-1">
+                      Pay using Google Pay, PhonePe, Paytm or any UPI app
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {paymentMethod === "upi_qr" && (
+                <div className="mt-8 p-6 border border-[#eadfce] bg-[#fffbf8] rounded-3xl">
+                  <h3 className="text-2xl font-bold text-[#2f2723] mb-6">
+                    Scan to Pay
+                  </h3>
+
+                  <div className="flex flex-col items-center mb-6">
+                    <Image
+                      src="/upi-qr.png"
+                      alt="UPI QR Code - Khushi Crochet"
+                      width={224}
+                      height={224}
+                      className="rounded-2xl border-2 border-[#ddd3c7] bg-white shadow-lg"
+                      priority
+                    />
+                  </div>
+
+                  <p className="text-center text-[#6e6259] mb-6 leading-relaxed">
+                    📱 Scan QR above with GPay, PhonePe, Paytm or any UPI app<br/>
+                    💰 Pay exactly <strong>₹{totalAmount.toFixed(2)}</strong>
+                  </p>
+
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border-2 border-[#ddd3c7]">
+                      <span className="text-sm font-bold text-[#2f2723]">
+                        UPI ID:
+                      </span>
+                      <span className="text-base text-[#6e6259] break-all flex-1 min-w-0">
+                        {UPI_ID}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={copyUpiId}
+                        className="px-4 py-2 bg-[#b59a7a] hover:bg-[#b59a7a]/90 text-white text-xs font-bold rounded-xl transition-all whitespace-nowrap"
+                      >
+                        {copied ? "Copied!" : "Copy ID"}
+                      </button>
+                    </div>
+
+                    <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border-2 border-green-200">
+                      <p className="text-center font-semibold text-green-700 mb-3 text-sm">
+                        🚀 Instant Payment - One Tap
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={copyUpiDeepLink}
+                          className="flex flex-col items-center p-3 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 shadow-lg transform hover:scale-105 transition-all font-semibold text-sm"
+                        >
+                          <span className="text-2xl mb-1">📱</span>
+                          <span>GPay</span>
+                          <span className="text-xs opacity-90">₹{totalAmount.toFixed(2)}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={copyUpiDeepLink}
+                          className="flex flex-col items-center p-3 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 shadow-lg transform hover:scale-105 transition-all font-semibold text-sm"
+                        >
+                          <span className="text-2xl mb-1">📱</span>
+                          <span>PhonePe</span>
+                          <span className="text-xs opacity-90">₹{totalAmount.toFixed(2)}</span>
+                        </button>
+                      </div>
+                      <p className="text-xs text-center text-gray-600 mt-2">
+                        Tap → Copies UPI link → Paste in your UPI app
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-center text-lg font-semibold text-[#2f2723] mb-4">
+                    Pay <strong>₹{totalAmount.toFixed(2)}</strong> exactly
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold uppercase tracking-wide text-[#2f2723] mb-2">
+                      Transaction ID *
+                    </label>
+                    <input
+                      type="text"
+                      name="transactionId"
+                      placeholder="Enter UPI txn ID"
+                      value={form.transactionId}
+                      onChange={handleChange}
+                      className={`w-full p-4 rounded-2xl border-2 transition-all font-medium text-lg ${
+                        formErrors.transactionId
+                          ? "border-red-400 bg-red-50"
+                          : "border-[#ddd3c7] bg-[#fffbf8] hover:border-[#b59a7a]"
+                      }`}
+                    />
+                    {formErrors.transactionId && (
+                      <span className="block mt-2 text-red-500 text-sm font-semibold">
+                        {formErrors.transactionId}
+                      </span>
+                    )}
+                  </div>
+
+                  <UpiScanner
+                    onScan={(decodedText) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        transactionId: decodedText,
+                      }))
+                    }
+                    totalAmount={totalAmount}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
-          <div style={styles.right}>
-            <h2 style={styles.sectionTitle}>Order Summary</h2>
+          <div className="bg-white p-8 rounded-3xl shadow-xl sticky top-32 self-start h-fit">
+            <h2 className="text-2xl font-bold text-[#2f2723] mb-6">
+              Order Summary
+            </h2>
 
-            <div style={styles.itemsList}>
+            <div className="space-y-4 mb-8 pb-6 border-b-2 border-[#ddd3c7]">
               {cart.map((item) => (
-                <div key={item._id} style={styles.itemRow}>
-                  <div style={styles.itemImageWrapper}>
+                <div
+                  key={item._id}
+                  className="grid grid-cols-[80px_1fr_100px] gap-4 items-start p-4 rounded-2xl bg-[#fffbf8]"
+                >
+                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-[#f2ece4]">
                     {item.image && !item.image.startsWith("blob:") ? (
-                      <Image
+                    <Image
                         src={item.image}
                         alt={item.name}
                         width={80}
                         height={80}
-                        style={styles.itemImage}
+                        priority
+                        className="w-full h-full object-cover"
                       />
+
                     ) : (
-                      <div style={styles.imagePlaceholder}>
-                        Image unavailable
+                      <div className="w-full h-full flex items-center justify-center text-xs text-[#b59a7a]">
+                        No image
                       </div>
                     )}
                   </div>
-                  <div style={styles.itemInfo}>
-                    <h4 style={styles.itemName}>{item.name}</h4>
-                    <p style={styles.itemQuantity}>Qty: {item.quantity}</p>
+
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-base text-[#2f2723]">
+                      {item.name}
+                    </h4>
+                    <p className="text-xs text-[#6e6259]">Qty: {item.quantity}</p>
                   </div>
-                  <div style={styles.itemPrice}>
+
+                  <div className="text-right font-bold text-base text-[#b59a7a]">
                     ₹
                     {(
                       (typeof item.price === "string"
@@ -674,48 +744,48 @@ function CheckoutContent() {
               ))}
             </div>
 
-            <div style={styles.totalBox}>
-              <div style={styles.summaryRow}>
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between text-sm text-[#6e6259]">
                 <span>Subtotal:</span>
                 <span>₹{totalAmount.toFixed(2)}</span>
               </div>
-              <div style={styles.summaryRow}>
+              <div className="flex justify-between text-sm text-[#6e6259]">
                 <span>Shipping:</span>
-                <span style={{ color: "#27ae60", fontWeight: "600" }}>
-                  FREE
+                <span className="text-green-600 font-semibold">FREE</span>
+              </div>
+            </div>
+
+            <div className="border-t-2 border-[#ddd3c7] pt-4 mb-6">
+              <div className="flex justify-between text-xl font-bold">
+                <span>Total:</span>
+                <span className="text-2xl text-[#b59a7a]">
+                  ₹{totalAmount.toFixed(2)}
                 </span>
               </div>
-              <div
-                style={{
-                  ...styles.summaryRow,
-                  borderTop: "2px solid #ddd3c7",
-                  paddingTop: "14px",
-                  marginTop: "14px",
-                  fontSize: "16px",
-                }}
-              >
-                <strong>Total:</strong>
-                <strong style={{ color: "#b59a7a", fontSize: "20px" }}>
-                  ₹{totalAmount.toFixed(2)}
-                </strong>
-              </div>
-
-              <button
-                style={styles.orderBtn}
-                onClick={placeOrder}
-                disabled={isProcessing}
-              >
-                {isProcessing
-                  ? "Processing..."
-                  : paymentMethod === "UPI_QR"
-                  ? "Confirm UPI Payment"
-                  : "Place Order"}
-              </button>
-
-              <Link href="/cart" style={styles.editCartBtn}>
-                Edit Cart
-              </Link>
             </div>
+
+            <button
+              className={`w-full py-4 px-6 rounded-full font-bold uppercase tracking-wide text-lg transition-all ${
+                isProcessing
+                  ? "bg-gray-400 cursor-not-allowed text-white"
+                  : "bg-[#2f2723] hover:bg-opacity-90 text-white"
+              } disabled:opacity-50`}
+              onClick={placeOrder}
+              disabled={isProcessing}
+            >
+              {isProcessing
+                ? "Processing..."
+                : paymentMethod === "upi_qr"
+                ? "Confirm UPI Payment"
+                : "Place Order"}
+            </button>
+
+            <Link
+              href="/cart"
+              className="block w-full text-center mt-4 py-4 px-6 rounded-full font-bold uppercase tracking-wide text-lg border-2 border-[#2f2723] text-[#2f2723] hover:bg-[#2f2723] hover:text-white transition-all"
+            >
+              Edit Cart
+            </Link>
           </div>
         </div>
       </div>
@@ -723,336 +793,11 @@ function CheckoutContent() {
   );
 }
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#f8f5f0",
-    padding: "100px 0 80px",
-  },
-  emptyCart: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#f8f5f0",
-    padding: "40px 20px",
-  },
-  emptyContent: {
-    textAlign: "center",
-    maxWidth: "600px",
-  },
-  emptyTitle: {
-    fontSize: "42px",
-    fontWeight: "600",
-    color: "#2f2723",
-    marginBottom: "18px",
-    margin: "0 0 18px 0",
-  },
-  emptyText: {
-    fontSize: "18px",
-    color: "#6e6259",
-    lineHeight: "1.8",
-    marginBottom: "36px",
-    margin: "0 0 36px 0",
-  },
-  continueShoppingBtn: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "13px 28px",
-    background: "#2f2723",
-    color: "#fff",
-    textDecoration: "none",
-    borderRadius: "999px",
-    fontWeight: "700",
-    fontSize: "13px",
-    letterSpacing: "1px",
-    textTransform: "uppercase",
-    transition: "all 0.3s ease",
-  },
-  pageHeader: {
-    marginBottom: "50px",
-    paddingTop: "20px",
-  },
-  breadcrumb: {
-    fontSize: "14px",
-    color: "#6e6259",
-    marginBottom: "24px",
-  },
-  breadcrumbLink: {
-    color: "#6e6259",
-    textDecoration: "none",
-    transition: "color 0.3s ease",
-  },
-  breadcrumbSeparator: {
-    color: "#b59a7a",
-    margin: "0 10px",
-    fontWeight: "500",
-  },
-  breadcrumbCurrent: {
-    color: "#2f2723",
-    fontWeight: "600",
-  },
-  heading: {
-    fontSize: "44px",
-    fontWeight: "600",
-    color: "#2f2723",
-    margin: 0,
-  },
-  wrapper: {
-    display: "grid",
-    gridTemplateColumns: "1fr 380px",
-    gap: "40px",
-  },
-  left: {
-    background: "#fff",
-    padding: "32px",
-    borderRadius: "20px",
-    boxShadow: "0 6px 20px rgba(47, 39, 35, 0.08)",
-  },
-  right: {
-    background: "#fff",
-    padding: "32px",
-    borderRadius: "20px",
-    boxShadow: "0 6px 20px rgba(47, 39, 35, 0.08)",
-    height: "fit-content",
-    position: "sticky",
-    top: "130px",
-  },
-  sectionTitle: {
-    margin: "0 0 24px 0",
-    color: "#2f2723",
-    fontSize: "20px",
-    fontWeight: "700",
-  },
-  formGroup: {
-    marginBottom: "20px",
-  },
-  label: {
-    display: "block",
-    marginBottom: "8px",
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "#2f2723",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  },
-  input: {
-    width: "100%",
-    padding: "12px 14px",
-    borderRadius: "10px",
-    border: "1px solid #ddd3c7",
-    outline: "none",
-    fontSize: "15px",
-    fontFamily: "inherit",
-    transition: "all 0.3s ease",
-    boxSizing: "border-box",
-    backgroundColor: "#fffbf8",
-  },
-  error: {
-    display: "block",
-    color: "#dc3545",
-    fontSize: "12px",
-    marginTop: "6px",
-    fontWeight: "600",
-  },
-  twoColumns: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "16px",
-  },
-  paymentOptions: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "12px",
-  },
-  paymentLabel: {
-    display: "flex",
-    alignItems: "center",
-    padding: "14px 16px",
-    border: "2px solid #ddd3c7",
-    borderRadius: "12px",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-    fontSize: "15px",
-    color: "#2f2723",
-  },
-  upiBox: {
-    marginTop: "22px",
-    padding: "22px",
-    borderRadius: "16px",
-    background: "#fffbf8",
-    border: "1px solid #eadfce",
-  },
-  upiTitle: {
-    margin: "0 0 16px 0",
-    fontSize: "20px",
-    color: "#2f2723",
-  },
-  qrWrapper: {
-    display: "flex",
-    justifyContent: "center",
-    marginBottom: "14px",
-  },
-  qrImage: {
-    borderRadius: "12px",
-    border: "1px solid #ddd3c7",
-    objectFit: "contain",
-    background: "#fff",
-  },
-  upiText: {
-    fontSize: "14px",
-    color: "#6e6259",
-    textAlign: "center",
-    marginBottom: "16px",
-    lineHeight: "1.7",
-  },
-  upiIdBox: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    flexWrap: "wrap",
-    marginBottom: "14px",
-    padding: "12px 14px",
-    background: "#fff",
-    borderRadius: "10px",
-    border: "1px solid #ddd3c7",
-  },
-  upiIdLabel: {
-    fontSize: "13px",
-    fontWeight: "700",
-    color: "#2f2723",
-  },
-  upiIdValue: {
-    fontSize: "14px",
-    color: "#6e6259",
-    wordBreak: "break-all",
-  },
-  copyBtn: {
-    marginLeft: "auto",
-    border: "none",
-    background: "#2f2723",
-    color: "#fff",
-    padding: "8px 12px",
-    borderRadius: "999px",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: "600",
-  },
-  paymentNote: {
-    fontSize: "14px",
-    lineHeight: "1.7",
-    color: "#2f2723",
-  },
-  itemsList: {
-    marginBottom: "24px",
-    borderBottom: "2px solid #ddd3c7",
-    paddingBottom: "24px",
-  },
-  itemRow: {
-    display: "grid",
-    gridTemplateColumns: "80px 1fr 100px",
-    gap: "12px",
-    alignItems: "flex-start",
-    marginBottom: "16px",
-    padding: "12px",
-    borderRadius: "10px",
-    backgroundColor: "#fffbf8",
-  },
-  itemImageWrapper: {
-    width: "80px",
-    height: "80px",
-    borderRadius: "8px",
-    overflow: "hidden",
-    backgroundColor: "#f2ece4",
-    flexShrink: 0,
-  },
-  itemImage: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-  },
-  imagePlaceholder: {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "12px",
-    color: "#b59a7a",
-  },
-  itemInfo: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-  },
-  itemName: {
-    margin: 0,
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "#2f2723",
-  },
-  itemQuantity: {
-    margin: 0,
-    fontSize: "12px",
-    color: "#6e6259",
-  },
-  itemPrice: {
-    fontSize: "14px",
-    fontWeight: "700",
-    color: "#b59a7a",
-    textAlign: "right",
-  },
-  totalBox: {
-    marginTop: "0",
-  },
-  summaryRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: "12px",
-    fontSize: "14px",
-    color: "#6e6259",
-  },
-  orderBtn: {
-    width: "100%",
-    padding: "14px 20px",
-    border: "none",
-    borderRadius: "999px",
-    background: "#2f2723",
-    color: "#fff",
-    fontWeight: "700",
-    cursor: "pointer",
-    fontSize: "14px",
-    letterSpacing: "1px",
-    textTransform: "uppercase",
-    marginTop: "24px",
-    transition: "all 0.3s ease",
-  },
-  editCartBtn: {
-    display: "block",
-    width: "100%",
-    padding: "12px 20px",
-    textAlign: "center",
-    marginTop: "12px",
-    border: "2px solid #2f2723",
-    background: "#fff",
-    color: "#2f2723",
-    borderRadius: "999px",
-    fontWeight: "700",
-    fontSize: "13px",
-    letterSpacing: "1px",
-    textTransform: "uppercase",
-    textDecoration: "none",
-    transition: "all 0.3s ease",
-    boxSizing: "border-box",
-  },
-};
-
 export default function CheckoutPage() {
   return (
-    <Suspense 
+    <Suspense
       fallback={
-        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8f5f0" }}>
+        <div className="min-h-screen flex items-center justify-center bg-[#f8f5f0]">
           Loading checkout...
         </div>
       }
